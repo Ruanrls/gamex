@@ -180,10 +180,85 @@ export class IPFSService {
   /**
    * Get IPFS gateway URL for a CID
    * @param cid - Content identifier
-   * @param gateway - IPFS gateway URL (default: ipfs.io)
+   * @param gateway - IPFS gateway URL
    */
-  getGatewayUrl(cid: string, gateway: string = 'https://ipfs.io'): string {
+  getGatewayUrl(cid: string, gateway: string = 'http://localhost:8080'): string {
     return `${gateway}/ipfs/${cid}`
+  }
+
+  /**
+   * Fetch metadata JSON from IPFS by CID
+   * @param cid - Content identifier for the metadata JSON
+   * @returns Parsed metadata object
+   */
+  async fetchMetadata(cid: string): Promise<any> {
+    try {
+      const url = `http://localhost:5001/api/v0/cat?arg=${cid}`
+
+      const response = await fetch(url, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch metadata: ${response.status} ${response.statusText}`)
+      }
+
+      const text = await response.text()
+      return JSON.parse(text)
+    } catch (error) {
+      console.error('Failed to fetch metadata from IPFS:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Download a file from IPFS and return as Blob
+   * @param cid - Content identifier for the file
+   * @param onProgress - Optional callback for download progress
+   * @returns Downloaded file as Blob
+   */
+  async downloadFile(cid: string, onProgress?: (loaded: number, total: number) => void): Promise<Blob> {
+    try {
+      const url = `http://localhost:5001/api/v0/cat?arg=${cid}`
+
+      const response = await fetch(url, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`)
+      }
+
+      const contentLength = response.headers.get('content-length')
+      const total = contentLength ? parseInt(contentLength, 10) : 0
+
+      if (!response.body) {
+        throw new Error('Response body is null')
+      }
+
+      const reader = response.body.getReader()
+      const chunks: Uint8Array[] = []
+      let loaded = 0
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        chunks.push(value)
+        loaded += value.length
+
+        if (onProgress) {
+          onProgress(loaded, total)
+        }
+      }
+
+      // Combine chunks into single blob
+      return new Blob(chunks as unknown as ArrayBuffer[])
+    } catch (error) {
+      console.error('Failed to download file from IPFS:', error)
+      throw error
+    }
   }
 }
 

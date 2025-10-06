@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 
-const MAX_FILE_SIZE = 5000000 // 5MB
+const MAX_IMAGE_SIZE = 5000000 // 5MB
+const MAX_EXECUTABLE_SIZE = 100000000 // 100MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
 
 const gameFormSchema = z.object({
@@ -26,12 +27,19 @@ const gameFormSchema = z.object({
     .instanceof(FileList)
     .refine((files) => files?.length === 1, "Image is required")
     .refine(
-      (files) => files?.[0]?.size <= MAX_FILE_SIZE,
+      (files) => files?.[0]?.size <= MAX_IMAGE_SIZE,
       "Max file size is 5MB"
     )
     .refine(
       (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
       "Only .jpg, .jpeg, .png and .webp formats are supported"
+    ),
+  executable: z
+    .instanceof(FileList)
+    .refine((files) => files?.length === 1, "Executable file is required")
+    .refine(
+      (files) => files?.[0]?.size <= MAX_EXECUTABLE_SIZE,
+      "Max executable file size is 100MB"
     ),
 })
 
@@ -44,6 +52,7 @@ type GameFormProps = {
 
 export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
   const [preview, setPreview] = useState<string | null>(null)
+  const [executableName, setExecutableName] = useState<string | null>(null)
 
   const form = useForm<GameFormValues>({
     resolver: zodResolver(gameFormSchema),
@@ -61,6 +70,13 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
         setPreview(reader.result as string)
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const handleExecutableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setExecutableName(file.name)
     }
   }
 
@@ -138,6 +154,37 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
                     alt="Game preview"
                     className="max-w-sm rounded-lg border"
                   />
+                </div>
+              )}
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="executable"
+          render={({ field: { onChange, value, ...field } }) => (
+            <FormItem>
+              <FormLabel>Game Executable</FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  onChange={(e) => {
+                    onChange(e.target.files)
+                    handleExecutableChange(e)
+                  }}
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                Upload the game executable file (max 100MB)
+              </FormDescription>
+              <FormMessage />
+              {executableName && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800">
+                    Selected: <span className="font-medium">{executableName}</span>
+                  </p>
                 </div>
               )}
             </FormItem>

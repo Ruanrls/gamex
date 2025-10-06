@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { GameForm } from '@/components/GameForm'
+import { GameLauncher } from '@/components/GameLauncher'
 import { ipfs } from '@/lib/ipfs'
 import { useState } from 'react'
 
@@ -11,6 +12,7 @@ type GameMetadata = {
   name: string
   description: string
   image: string
+  executable: string
 }
 
 function RouteComponent() {
@@ -22,21 +24,30 @@ function RouteComponent() {
       setIsUploading(true)
       console.log('Starting IPFS upload...')
 
-      // Upload image to IPFS directly (daemon already running from Rust)
+      // Upload image to IPFS
       const imageFile = values.image[0] as File
       console.log('Uploading image to IPFS:', imageFile.name)
       const imageResult = await ipfs.addFile(imageFile)
       console.log('Image uploaded! CID:', imageResult.cid)
 
-      // Get image URI
+      // Upload executable to IPFS
+      const executableFile = values.executable[0] as File
+      console.log('Uploading executable to IPFS:', executableFile.name)
+      const executableResult = await ipfs.addFile(executableFile)
+      console.log('Executable uploaded! CID:', executableResult.cid)
+
+      // Get URIs
       const imageUri = ipfs.getGatewayUrl(imageResult.cid)
+      const executableUri = ipfs.getGatewayUrl(executableResult.cid)
       console.log('Image URI:', imageUri)
+      console.log('Executable URI:', executableUri)
 
       // Create metadata object
       const metadata: GameMetadata = {
         name: values.name,
         description: values.description,
         image: imageUri,
+        executable: executableUri,
       }
       console.log('Metadata:', metadata)
 
@@ -59,32 +70,44 @@ function RouteComponent() {
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-8 text-center">Add New Game</h1>
+      <h1 className="text-3xl font-bold mb-8 text-center">GameX - Decentralized Game Platform</h1>
 
-      <GameForm onSubmit={handleGameSubmit} isLoading={isUploading} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Left Column - Upload Game */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold">Upload Game</h2>
+          <GameForm onSubmit={handleGameSubmit} isLoading={isUploading} />
 
-      {metadataCid && (
-        <div className="mt-8 max-w-2xl mx-auto p-6 bg-green-50 border border-green-200 rounded-lg">
-          <h2 className="text-xl font-semibold mb-2 text-green-800">Upload Successful!</h2>
-          <div className="space-y-2">
-            <p className="text-sm">
-              <span className="font-medium">Metadata CID:</span>{' '}
-              <code className="bg-white px-2 py-1 rounded text-xs">{metadataCid}</code>
-            </p>
-            <p className="text-sm">
-              <span className="font-medium">Metadata URL:</span>{' '}
-              <a
-                href={ipfs.getGatewayUrl(metadataCid)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline break-all"
-              >
-                {ipfs.getGatewayUrl(metadataCid)}
-              </a>
-            </p>
-          </div>
+          {metadataCid && (
+            <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+              <h3 className="text-xl font-semibold mb-2 text-green-800">Upload Successful!</h3>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <span className="font-medium">Metadata CID:</span>{' '}
+                  <code className="bg-white px-2 py-1 rounded text-xs">{metadataCid}</code>
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium">Metadata URL:</span>{' '}
+                  <a
+                    href={ipfs.getGatewayUrl(metadataCid)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline break-all"
+                  >
+                    {ipfs.getGatewayUrl(metadataCid)}
+                  </a>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right Column - Launch Game */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold">Play Game</h2>
+          <GameLauncher />
+        </div>
+      </div>
     </div>
   )
 }

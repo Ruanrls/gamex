@@ -2,12 +2,57 @@ use tauri_plugin_shell::ShellExt;
 use std::{collections::HashMap};
 use tauri::{async_runtime, Manager};
 
+#[tauri::command]
+fn execute_game(path: String) -> Result<String, String> {
+    println!("[Tauri] Executing game at path: {}", path);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        Command::new(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to execute game: {}", e))?;
+        Ok(format!("Game launched: {}", path))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        // On macOS, we need to make the file executable first
+        Command::new("chmod")
+            .args(["+x", &path])
+            .output()
+            .map_err(|e| format!("Failed to set executable permission: {}", e))?;
+
+        Command::new(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to execute game: {}", e))?;
+        Ok(format!("Game launched: {}", path))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        // On Linux, we need to make the file executable first
+        Command::new("chmod")
+            .args(["+x", &path])
+            .output()
+            .map_err(|e| format!("Failed to set executable permission: {}", e))?;
+
+        Command::new(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to execute game: {}", e))?;
+        Ok(format!("Game launched: {}", path))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![execute_game])
         .setup(|app| {
             println!("[Tauri] Initializing IPFS...");
 
