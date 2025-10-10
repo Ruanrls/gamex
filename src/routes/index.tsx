@@ -64,14 +64,14 @@ function RouteComponent() {
       const metadata: GameMetadata = {
         name: values.name,
         description: values.description,
-        image: imageResult.id,
-        executable: executableResult.id,
+        image: ipfs.getGatewayUrl(imageResult.id),
+        executable: ipfs.getGatewayUrl(executableResult.id),
       };
 
       const metadataResult = await ipfs.uploadJson(metadata);
       const collection = await NftCollection.create(wallet, {
         name: metadata.name,
-        uri: metadataResult.id
+        uri: ipfs.getGatewayUrl(metadataResult.id)
       });
 
       setCollectionAddress(collection.collection.publicKey);
