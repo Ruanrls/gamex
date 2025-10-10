@@ -32,10 +32,22 @@ export function LoginRoute() {
     }, [])
 
     return (
-        <div>
-            <Button onClick={generateWallet}>
-                Generate wallet
-            </Button>
+        <div className="min-h-screen flex items-center justify-center bg-black">
+            <div className="text-center space-y-6">
+                <h1 className="text-4xl font-bold text-white mb-4">
+                    Welcome to GameX
+                </h1>
+                <p className="text-gray-400 mb-8">
+                    Create or connect your wallet to get started
+                </p>
+                <Button
+                    onClick={generateWallet}
+                    size="lg"
+                    className="bg-pink-600 hover:bg-pink-700 text-white font-semibold"
+                >
+                    Generate Wallet
+                </Button>
+            </div>
         </div>
     )
 }
