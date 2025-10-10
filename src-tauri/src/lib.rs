@@ -1,6 +1,6 @@
-use tauri_plugin_shell::ShellExt;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 use tauri::{async_runtime, Manager};
+use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
 fn execute_game(path: String) -> Result<String, String> {
@@ -49,6 +49,7 @@ fn execute_game(path: String) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())

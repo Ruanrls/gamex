@@ -1,113 +1,173 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { GameForm } from '@/components/GameForm'
-import { GameLauncher } from '@/components/GameLauncher'
-import { ipfs } from '@/lib/ipfs'
-import { useState } from 'react'
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { GameForm } from "@/components/GameForm";
+import { GameLauncher } from "@/components/GameLauncher";
+import { ipfs } from "@/lib/file-storage/ipfs";
+import { useState, Activity, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { useUser } from "@/providers/user.provider";
+import { useBalance } from "@/hooks/use-balance";
+import { requestAirdrop } from "@/lib/blockchain/utils";
+import connection from "@/lib/blockchain/connection";
+import { NftCollection } from "@/lib/blockchain/nft-collection";
+import { toast } from "sonner";
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute("/")({
   component: RouteComponent,
-})
+  beforeLoad(ctx) {
+    if (!ctx.context.wallet) {
+      throw redirect({
+        to: "/login",
+        search: {
+          redirect: location.href,
+        },
+      });
+    }
+  },
+});
 
 type GameMetadata = {
-  name: string
-  description: string
-  image: string
-  executable: string
-}
+  name: string;
+  description: string;
+  image: string;
+  executable: string;
+};
 
 function RouteComponent() {
-  const [isUploading, setIsUploading] = useState(false)
-  const [metadataCid, setMetadataCid] = useState<string | null>(null)
+  const navigate = useNavigate({
+    from: "/",
+  });
 
+  const { wallet } = useUser();
+  const {
+    data,
+    refetch: refetchBalance,
+  } = useBalance();
+
+  const [collectionAddress, setCollectionAddress] = useState<string | undefined>(undefined)
+
+  const [uploadTransition, startUploadTransition] = useTransition()
   const handleGameSubmit = async (values: any) => {
-    try {
-      setIsUploading(true)
-      console.log('Starting IPFS upload...')
+    startUploadTransition(async () => {
+      if(!wallet) {
+        return navigate({
+          to: "/login"
+        })
+      }
+      
+      const imageFile = values.image[0] as File;
+      const executableFile = values.executable[0] as File;
 
-      // Upload image to IPFS
-      const imageFile = values.image[0] as File
-      console.log('Uploading image to IPFS:', imageFile.name)
-      const imageResult = await ipfs.addFile(imageFile)
-      console.log('Image uploaded! CID:', imageResult.cid)
+      const [imageResult, executableResult] = await Promise.all([ipfs.uploadFile(imageFile), 
+        ipfs.uploadFile(executableFile)
+      ]);
 
-      // Upload executable to IPFS
-      const executableFile = values.executable[0] as File
-      console.log('Uploading executable to IPFS:', executableFile.name)
-      const executableResult = await ipfs.addFile(executableFile)
-      console.log('Executable uploaded! CID:', executableResult.cid)
-
-      // Get URIs
-      const imageUri = ipfs.getGatewayUrl(imageResult.cid)
-      const executableUri = ipfs.getGatewayUrl(executableResult.cid)
-      console.log('Image URI:', imageUri)
-      console.log('Executable URI:', executableUri)
-
-      // Create metadata object
       const metadata: GameMetadata = {
         name: values.name,
         description: values.description,
-        image: imageUri,
-        executable: executableUri,
+        image: imageResult.id,
+        executable: executableResult.id,
+      };
+
+      const metadataResult = await ipfs.uploadJson(metadata);
+      const collection = await NftCollection.create(wallet, {
+        name: metadata.name,
+        uri: metadataResult.id
+      });
+
+      setCollectionAddress(collection.collection.publicKey);
+      toast("Game uploaded")
+    })
+  };
+
+  const [airdropTransition, startAirdropTransition] = useTransition();
+  const handleAirdrop = async () => {
+    startAirdropTransition(async () => {
+      if (!wallet) {
+        return;
       }
-      console.log('Metadata:', metadata)
+      
+      alert("Requesting 1 SOL airdrop");
+      await requestAirdrop({
+        amount: 1,
+        publicKey: wallet?.address,
+      });
+      await refetchBalance();
+      
+      alert("Airdrop successful! Received 1 SOL");
+   
+  })
+  }
 
-      // Upload metadata JSON to IPFS
-      console.log('Uploading metadata to IPFS...')
-      const metadataResult = await ipfs.addJSON(metadata)
-      console.log('Metadata uploaded! CID:', metadataResult.cid)
-
-      // Store metadata CID
-      setMetadataCid(metadataResult.cid)
-
-      alert(`Success! Metadata CID: ${metadataResult.cid}`)
-    } catch (error) {
-      console.error('Upload failed:', error)
-      alert(`Upload failed: ${error}`)
-    } finally {
-      setIsUploading(false)
-    }
+   
+  if (!wallet) {
+    return navigate({
+      to: "/login",
+    });
   }
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-8 text-center">GameX - Decentralized Game Platform</h1>
+      <h1 className="text-3xl font-bold mb-8 text-center">
+        GameX - Decentralized Game Platform
+      </h1>
+
+      <div className="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex gap-x-2 items-center">
+            <h3 className="font-semibold mb-2">Solana Wallet</h3>
+            <p className="text-sm mb-1">
+              <span className="font-medium">Address:</span>{" "}
+              <code className="bg-white px-2 py-1 rounded text-xs">
+                {wallet.address?.slice(0, 8)}...{wallet.address?.slice(-8)}
+              </code>
+              <span>
+                Balance:{" "}
+                {data.isLoading ? (
+                  <strong>loading...</strong>
+                ) : (
+                  <strong>{data.balance / 1e9} SOL</strong>
+                )}
+              </span>
+            </p>
+
+            <Activity
+              mode={
+                connection.rpcEndpoint.includes("localhost")
+                  ? "visible"
+                  : "hidden"
+              }
+            >
+              <Button onClick={handleAirdrop}>{airdropTransition ? "Aidropping..." : "Airdrop"}</Button>
+            </Activity>
+          </div>
+
+          <div>
+            <h3 className="font-semibold mb-2">Network & Collection</h3>
+            <div className="space-y-2">
+              <Activity mode={collectionAddress ? "visible" : "hidden"}>
+                <p className="text-sm">
+                  <span className="font-medium">Collection:</span>{" "}
+                  <code className="bg-white px-2 py-1 rounded text-xs">
+                    {collectionAddress?.slice(0, 8)}...
+                  </code>
+                </p>
+              </Activity>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left Column - Upload Game */}
         <div className="space-y-6">
           <h2 className="text-2xl font-semibold">Upload Game</h2>
-          <GameForm onSubmit={handleGameSubmit} isLoading={isUploading} />
-
-          {metadataCid && (
-            <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2 text-green-800">Upload Successful!</h3>
-              <div className="space-y-2">
-                <p className="text-sm">
-                  <span className="font-medium">Metadata CID:</span>{' '}
-                  <code className="bg-white px-2 py-1 rounded text-xs">{metadataCid}</code>
-                </p>
-                <p className="text-sm">
-                  <span className="font-medium">Metadata URL:</span>{' '}
-                  <a
-                    href={ipfs.getGatewayUrl(metadataCid)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all"
-                  >
-                    {ipfs.getGatewayUrl(metadataCid)}
-                  </a>
-                </p>
-              </div>
-            </div>
-          )}
+          <GameForm onSubmit={handleGameSubmit} isLoading={uploadTransition} />
         </div>
 
-        {/* Right Column - Launch Game */}
         <div className="space-y-6">
           <h2 className="text-2xl font-semibold">Play Game</h2>
           <GameLauncher />
         </div>
       </div>
     </div>
-  )
+  );
 }

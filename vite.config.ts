@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite"
 import path from 'node:path'
 import {tanstackRouter} from '@tanstack/router-plugin/vite'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -15,11 +16,23 @@ export default defineConfig(async () => ({
         }),
         react(),
         tailwindcss(),
+        nodePolyfills({
+            globals: {
+                Buffer: true,
+                global: true,
+                process: true,
+            },
+        }),
     ],
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src")
         }
+    },
+    define: {
+        'process.env': {
+            VITE_SOLANA_CLUSTER: process.env.VITE_SOLANA_CLUSTER
+        },
     },
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //

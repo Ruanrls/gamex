@@ -1,6 +1,7 @@
 import { Command } from '@tauri-apps/plugin-shell'
 import { appDataDir } from '@tauri-apps/api/path'
 import { join } from '@tauri-apps/api/path'
+import { FileStorage } from './interfaces'
 
 export type IPFSUploadResult = {
   cid: string
@@ -8,9 +9,8 @@ export type IPFSUploadResult = {
   name: string
 }
 
-export class IPFSService {
+export class IPFSService implements FileStorage {
   private static instance: IPFSService
-  private daemonProcess: ReturnType<typeof Command.sidecar> | null = null
   private ipfsPath: string | null = null
   private offlineMode: boolean = false
 
@@ -68,63 +68,11 @@ export class IPFSService {
   }
 
   /**
-   * Start IPFS daemon
-   * @param offline - Override offline mode for this daemon instance
-   */
-  async startDaemon(offline?: boolean): Promise<void> {
-    if (this.daemonProcess) {
-      console.log('IPFS daemon already running')
-      return
-    }
-
-    try {
-      console.log('[IPFS] Getting environment variables...')
-      const env = await this.getEnv()
-      console.log('[IPFS] IPFS_PATH:', env.IPFS_PATH)
-
-      const useOffline = offline !== undefined ? offline : this.offlineMode
-
-      const args = ['daemon']
-      if (useOffline) {
-        args.push('--offline')
-        console.log('[IPFS] Starting IPFS daemon in OFFLINE mode (no network connectivity)')
-      } else {
-        console.log('[IPFS] Starting IPFS daemon in ONLINE mode')
-      }
-
-      console.log('[IPFS] Command args:', args)
-      console.log('[IPFS] Environment:', env)
-
-      // Create command with environment in options
-      const command = Command.sidecar('binaries/ipfs', args, {
-        env
-      })
-
-      // Store reference
-      this.daemonProcess = command
-
-      // Spawn the daemon in background
-      console.log('[IPFS] Spawning daemon process...')
-      const child = await command.spawn()
-
-      console.log('[IPFS] Daemon started with PID:', child.pid)
-
-      // Wait a bit for daemon to start
-      console.log('[IPFS] Waiting 3 seconds for daemon initialization...')
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      console.log('[IPFS] Daemon should be ready now')
-    } catch (error) {
-      console.error('[IPFS] Failed to start IPFS daemon:', error)
-      throw error
-    }
-  }
-
-  /**
    * Upload a file to IPFS using HTTP API
    * @param file - Browser File object
    * @returns CID of the uploaded file
    */
-  async addFile(file: File): Promise<IPFSUploadResult> {
+  async uploadFile(file: File) {
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -146,9 +94,9 @@ export class IPFSService {
       const result = await response.json()
 
       return {
-        cid: result.Hash,
+        id: result.Hash,
         name: result.Name || file.name,
-        size: parseInt(result.Size) || file.size
+        sizeInBytes: parseInt(result.Size) || file.size
       }
     } catch (error) {
       console.error('Failed to add file to IPFS:', error)
@@ -161,20 +109,15 @@ export class IPFSService {
    * @param data - JavaScript object to upload
    * @returns CID of the uploaded JSON
    */
-  async addJSON(data: any): Promise<IPFSUploadResult> {
-    try {
+  async uploadJson(data: any) {
       const jsonContent = JSON.stringify(data, null, 2)
       const blob = new Blob([jsonContent], { type: 'application/json' })
       const file = new File([blob], `metadata-${Date.now()}.json`, { type: 'application/json' })
 
       // Upload to IPFS using HTTP API
-      const result = await this.addFile(file)
+      const result = await this.uploadFile(file)
 
       return result
-    } catch (error) {
-      console.error('Failed to add JSON to IPFS:', error)
-      throw error
-    }
   }
 
   /**
@@ -192,7 +135,6 @@ export class IPFSService {
    * @returns Parsed metadata object
    */
   async fetchMetadata(cid: string): Promise<any> {
-    try {
       const url = `http://localhost:5001/api/v0/cat?arg=${cid}`
 
       const response = await fetch(url, {
@@ -205,10 +147,6 @@ export class IPFSService {
 
       const text = await response.text()
       return JSON.parse(text)
-    } catch (error) {
-      console.error('Failed to fetch metadata from IPFS:', error)
-      throw error
-    }
   }
 
   /**
@@ -218,7 +156,6 @@ export class IPFSService {
    * @returns Downloaded file as Blob
    */
   async downloadFile(cid: string, onProgress?: (loaded: number, total: number) => void): Promise<Blob> {
-    try {
       const url = `http://localhost:5001/api/v0/cat?arg=${cid}`
 
       const response = await fetch(url, {
@@ -255,10 +192,6 @@ export class IPFSService {
 
       // Combine chunks into single blob
       return new Blob(chunks as unknown as ArrayBuffer[])
-    } catch (error) {
-      console.error('Failed to download file from IPFS:', error)
-      throw error
-    }
   }
 }
 

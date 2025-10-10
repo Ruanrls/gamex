@@ -48,6 +48,14 @@
           "args": true
         }
       ]
+    },
+    { 
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "http://localhost:8899/*"
+        }
+      ]
     }
   ]
 }
