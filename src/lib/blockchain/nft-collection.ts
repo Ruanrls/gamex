@@ -7,6 +7,7 @@ import {
     createSignerFromKeypair,
   generateSigner,
   publicKey,
+  signerIdentity,
 } from "@metaplex-foundation/umi";
 
 export type CollectionMetadata = {
@@ -27,7 +28,9 @@ export class NftCollection {
         publicKey: publicKey(signer.publicKey),
         secretKey: signer.secretKey
     })
-    
+
+    umi.use(signerIdentity(metaplexSigner));
+
     const collectionKeypair = generateSigner(umi);
     console.debug("[NftCollection:create] collection keypair generated ", collectionKeypair.publicKey);
     await createCollection(umi, {
@@ -53,6 +56,8 @@ export class NftCollection {
         publicKey: publicKey(signer.publicKey),
         secretKey: signer.secretKey
     })
+
+    umi.use(signerIdentity(metaplexSigner));
 
     await create(umi, {
       asset: assetKeypair,
