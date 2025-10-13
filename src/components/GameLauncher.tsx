@@ -4,11 +4,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { ipfs } from "@/lib/file-storage/ipfs"
-import { NftCollection } from "@/lib/blockchain/nft-collection"
+import { GameMintingService } from "@/lib/blockchain/services/game-minting.service"
+import { CollectionRepository } from "@/lib/blockchain/domain/repositories/collection.repository"
+import { AssetOwnershipService } from "@/lib/blockchain/services/asset-ownership.service"
+import { useUser } from "@/providers/user.provider"
 import { invoke } from "@tauri-apps/api/core"
 import { appDataDir } from "@tauri-apps/api/path"
 import { join } from "@tauri-apps/api/path"
-import { exists, mkdir, writeFile } from "@tauri-apps/plugin-fs"
+import { exists, mkdir, writeFile, readTextFile } from "@tauri-apps/plugin-fs"
 
 type GameMetadata = {
   name: string
@@ -24,9 +27,12 @@ type DownloadState = {
 }
 
 export function GameLauncher() {
-  const [collectionPublicKey, setCollectionPublicKey] = useState("")
+  const { wallet } = useUser()
+  const [candyMachinePublicKey, setCandyMachinePublicKey] = useState("")
   const [metadata, setMetadata] = useState<GameMetadata | null>(null)
+  const [assetPublicKey, setAssetPublicKey] = useState<string | null>(null)
   const [isFetching, setIsFetching] = useState(false)
+  const [isMinting, setIsMinting] = useState(false)
   const [downloadState, setDownloadState] = useState<DownloadState>({
     isDownloading: false,
     progress: 0,
@@ -66,23 +72,45 @@ export function GameLauncher() {
       setMetadata(null)
       setDownloadState({ isDownloading: false, progress: 0, isDownloaded: false })
 
-      console.log("Fetching collection metadata for PublicKey:", collectionPublicKey)
+      console.log("Fetching candy machine info for PublicKey:", candyMachinePublicKey)
 
-      const collection = await NftCollection.fetchByPublicKey(collectionPublicKey)
-      console.log("Collection fetched:", collection)
+      const mintingService = new GameMintingService()
+      const candyMachine = await mintingService.getCandyMachineInfo(candyMachinePublicKey)
 
-      // The metadata is already fetched by NftCollection.fetchByPublicKey
+      console.log("Candy machine fetched:", candyMachine)
+
+      // Fetch collection metadata to display game info
+      const collectionRepository = new CollectionRepository()
+      const collection = await collectionRepository.findByPublicKey(
+        candyMachine.collection.toString()
+      )
+
       console.log("Game metadata:", collection.metadata)
+      setMetadata(collection.metadata.toJSON())
 
-      setMetadata(collection.metadata)
-
-      // Check if game is already downloaded
+      // Check if game is already downloaded and load cached asset public key
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
-      const gameDir = await join(gamesDir, collectionPublicKey)
+      const gameDir = await join(gamesDir, candyMachinePublicKey)
       const executablePath = await join(gameDir, "game.exe")
+      const metadataPath = await join(gameDir, "metadata.json")
 
       const isDownloaded = await exists(executablePath)
+
+      // Load cached asset public key if available
+      if (isDownloaded && (await exists(metadataPath))) {
+        try {
+          const cachedMetadataText = await readTextFile(metadataPath)
+          const cachedMetadata = JSON.parse(cachedMetadataText)
+          if (cachedMetadata.assetPublicKey) {
+            setAssetPublicKey(cachedMetadata.assetPublicKey)
+            console.log("Loaded cached asset public key:", cachedMetadata.assetPublicKey)
+          }
+        } catch (err) {
+          console.warn("Failed to load cached asset public key:", err)
+        }
+      }
+
       setDownloadState({ isDownloading: false, progress: 100, isDownloaded })
     } catch (err) {
       console.error("Failed to fetch metadata:", err)
@@ -92,7 +120,41 @@ export function GameLauncher() {
     }
   }
 
-  const handleDownloadGame = async () => {
+  const handleMintGame = async () => {
+    if (!wallet) {
+      setError("Wallet not connected")
+      return
+    }
+
+    try {
+      setError(null)
+      setIsMinting(true)
+
+      console.log("Minting game from candy machine:", candyMachinePublicKey)
+
+      const mintingService = new GameMintingService()
+      const result = await mintingService.mintFromCandyMachine(
+        candyMachinePublicKey,
+        wallet
+      )
+
+      const mintedAssetPublicKey = result.asset.publicKey.toString()
+      console.log("Game minted successfully:", mintedAssetPublicKey)
+
+      // Store the asset public key
+      setAssetPublicKey(mintedAssetPublicKey)
+
+      // Automatically start download after minting
+      await handleDownloadGame(mintedAssetPublicKey)
+    } catch (err) {
+      console.error("Failed to mint game:", err)
+      setError(`Failed to mint game: ${err}`)
+    } finally {
+      setIsMinting(false)
+    }
+  }
+
+  const handleDownloadGame = async (mintedAssetPublicKey: string) => {
     if (!metadata) return
 
     try {
@@ -112,10 +174,10 @@ export function GameLauncher() {
 
       console.log("Download complete, saving to disk...")
 
-      // Save to AppData/games/{collectionPublicKey}/
+      // Save to AppData/games/{candyMachinePublicKey}/
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
-      const gameDir = await join(gamesDir, collectionPublicKey)
+      const gameDir = await join(gamesDir, candyMachinePublicKey)
 
       // Create directories if they don't exist
       if (!(await exists(gamesDir))) {
@@ -132,12 +194,17 @@ export function GameLauncher() {
 
       await writeFile(executablePath, uint8Array)
 
-      // Save metadata for caching
+      // Save metadata with asset public key for ownership validation
       const metadataPath = await join(gameDir, "metadata.json")
-      const metadataText = JSON.stringify(metadata, null, 2)
+      const metadataWithAsset = {
+        ...metadata,
+        assetPublicKey: mintedAssetPublicKey,
+      }
+      const metadataText = JSON.stringify(metadataWithAsset, null, 2)
       await writeFile(metadataPath, new TextEncoder().encode(metadataText))
 
       console.log("Game saved to:", executablePath)
+      console.log("Asset public key saved:", mintedAssetPublicKey)
 
       setDownloadState({ isDownloading: false, progress: 100, isDownloaded: true })
     } catch (err) {
@@ -148,15 +215,39 @@ export function GameLauncher() {
   }
 
   const handleLaunchGame = async () => {
-    if (!metadata) return
+    if (!metadata || !wallet) return
 
     try {
       setError(null)
       setIsLaunching(true)
 
+      // Verify ownership before launching
+      if (!assetPublicKey) {
+        throw new Error(
+          "Asset public key not found. Please re-download the game."
+        )
+      }
+
+      console.log("Verifying ownership for asset:", assetPublicKey)
+      console.log("Wallet address:", wallet.address)
+
+      const ownershipService = new AssetOwnershipService()
+      const isOwner = await ownershipService.verifyOwnership(
+        assetPublicKey,
+        wallet.address
+      )
+
+      if (!isOwner) {
+        throw new Error(
+          "You do not own this game NFT. You must own the NFT to play the game."
+        )
+      }
+
+      console.log("Ownership verified! Launching game...")
+
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
-      const gameDir = await join(gamesDir, collectionPublicKey)
+      const gameDir = await join(gamesDir, candyMachinePublicKey)
       const executablePath = await join(gameDir, "game.exe")
 
       console.log("Launching game:", executablePath)
@@ -174,21 +265,21 @@ export function GameLauncher() {
 
 
   console.log("Metadata:", metadata)
-  
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="collectionPublicKey" className="text-gray-300">Collection PublicKey</Label>
+        <Label htmlFor="candyMachinePublicKey" className="text-gray-300">Candy Machine PublicKey</Label>
         <div className="flex gap-2">
           <Input
-            id="collectionPublicKey"
-            placeholder="Paste collection PublicKey here"
-            value={collectionPublicKey}
-            onChange={(e) => setCollectionPublicKey(e.target.value)}
+            id="candyMachinePublicKey"
+            placeholder="Paste candy machine PublicKey here"
+            value={candyMachinePublicKey}
+            onChange={(e) => setCandyMachinePublicKey(e.target.value)}
             disabled={isFetching}
             className="bg-gray-800 border-gray-700 text-white"
           />
-          <Button onClick={handleFetchMetadata} disabled={!collectionPublicKey || isFetching}>
+          <Button onClick={handleFetchMetadata} disabled={!candyMachinePublicKey || isFetching}>
             {isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Fetch
           </Button>
@@ -218,18 +309,22 @@ export function GameLauncher() {
 
           <div className="space-y-2">
             {!downloadState.isDownloaded ? (
-              <Button
-                onClick={handleDownloadGame}
-                disabled={downloadState.isDownloading}
-                className="w-full"
-              >
+              <>
+                <Button
+                  onClick={handleMintGame}
+                  disabled={isMinting || downloadState.isDownloading}
+                  className="w-full"
+                  variant="default"
+                >
+                  {isMinting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isMinting ? "Minting Game..." : "Mint & Download Game"}
+                </Button>
                 {downloadState.isDownloading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <div className="text-center text-sm text-gray-400">
+                    Downloading... {downloadState.progress}%
+                  </div>
                 )}
-                {downloadState.isDownloading
-                  ? `Downloading... ${downloadState.progress}%`
-                  : "Download Game"}
-              </Button>
+              </>
             ) : (
               <Button
                 onClick={handleLaunchGame}

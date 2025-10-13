@@ -51,7 +51,7 @@ export function useBalance() {
 
   useEffect(() => {
     getBalance();
-  }, [setState]);
+  }, [getBalance]);
 
   return {
     data: state,
