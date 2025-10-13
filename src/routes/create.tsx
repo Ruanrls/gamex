@@ -60,10 +60,8 @@ function RouteComponent() {
       };
 
       const metadataResult = await ipfs.uploadJson(metadata);
-      const collection = await NftCollection.create(wallet, {
-        name: metadata.name,
-        uri: ipfs.getGatewayUrl(metadataResult.id)
-      });
+      const metadataUri = ipfs.getGatewayUrl(metadataResult.id);
+      const collection = await NftCollection.create(wallet, metadata, metadataUri);
 
       setCollectionAddress(collection.collection.publicKey);
       toast("Game uploaded successfully!");

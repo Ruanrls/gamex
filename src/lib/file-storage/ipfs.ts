@@ -1,6 +1,7 @@
 import { Command } from '@tauri-apps/plugin-shell'
 import { appDataDir } from '@tauri-apps/api/path'
 import { join } from '@tauri-apps/api/path'
+import { fetch } from '@tauri-apps/plugin-http'
 import { FileStorage } from './interfaces'
 
 export type IPFSUploadResult = {
@@ -125,7 +126,7 @@ export class IPFSService implements FileStorage {
    * @param cid - Content identifier
    * @param gateway - IPFS gateway URL
    */
-  getGatewayUrl(cid: string, gateway: string = 'http://localhost:8080'): string {
+  getGatewayUrl(cid: string, gateway: string = 'http://127.0.0.1:8080'): string {
     return `${gateway}/ipfs/${cid}`
   }
 

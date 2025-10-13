@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { ipfs } from "@/lib/file-storage/ipfs"
+import { NftCollection } from "@/lib/blockchain/nft-collection"
 import { invoke } from "@tauri-apps/api/core"
 import { appDataDir } from "@tauri-apps/api/path"
 import { join } from "@tauri-apps/api/path"
@@ -23,7 +24,7 @@ type DownloadState = {
 }
 
 export function GameLauncher() {
-  const [cid, setCid] = useState("")
+  const [collectionPublicKey, setCollectionPublicKey] = useState("")
   const [metadata, setMetadata] = useState<GameMetadata | null>(null)
   const [isFetching, setIsFetching] = useState(false)
   const [downloadState, setDownloadState] = useState<DownloadState>({
@@ -65,18 +66,20 @@ export function GameLauncher() {
       setMetadata(null)
       setDownloadState({ isDownloading: false, progress: 0, isDownloaded: false })
 
-      const extractedCid = extractCidFromUrl(cid)
-      console.log("Fetching metadata for CID:", extractedCid)
+      console.log("Fetching collection metadata for PublicKey:", collectionPublicKey)
 
-      const data = await ipfs.fetchMetadata(extractedCid)
-      console.log("Metadata fetched:", data)
+      const collection = await NftCollection.fetchByPublicKey(collectionPublicKey)
+      console.log("Collection fetched:", collection)
 
-      setMetadata(data)
+      // The metadata is already fetched by NftCollection.fetchByPublicKey
+      console.log("Game metadata:", collection.metadata)
+
+      setMetadata(collection.metadata)
 
       // Check if game is already downloaded
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
-      const gameDir = await join(gamesDir, extractedCid)
+      const gameDir = await join(gamesDir, collectionPublicKey)
       const executablePath = await join(gameDir, "game.exe")
 
       const isDownloaded = await exists(executablePath)
@@ -109,10 +112,10 @@ export function GameLauncher() {
 
       console.log("Download complete, saving to disk...")
 
-      // Save to AppData/games/{cid}/
+      // Save to AppData/games/{collectionPublicKey}/
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
-      const gameDir = await join(gamesDir, extractCidFromUrl(cid))
+      const gameDir = await join(gamesDir, collectionPublicKey)
 
       // Create directories if they don't exist
       if (!(await exists(gamesDir))) {
@@ -153,7 +156,7 @@ export function GameLauncher() {
 
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
-      const gameDir = await join(gamesDir, extractCidFromUrl(cid))
+      const gameDir = await join(gamesDir, collectionPublicKey)
       const executablePath = await join(gameDir, "game.exe")
 
       console.log("Launching game:", executablePath)
@@ -175,16 +178,17 @@ export function GameLauncher() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="cid">Game CID</Label>
+        <Label htmlFor="collectionPublicKey" className="text-gray-300">Collection PublicKey</Label>
         <div className="flex gap-2">
           <Input
-            id="cid"
-            placeholder="Paste IPFS CID or URL here"
-            value={cid}
-            onChange={(e) => setCid(e.target.value)}
+            id="collectionPublicKey"
+            placeholder="Paste collection PublicKey here"
+            value={collectionPublicKey}
+            onChange={(e) => setCollectionPublicKey(e.target.value)}
             disabled={isFetching}
+            className="bg-gray-800 border-gray-700 text-white"
           />
-          <Button onClick={handleFetchMetadata} disabled={!cid || isFetching}>
+          <Button onClick={handleFetchMetadata} disabled={!collectionPublicKey || isFetching}>
             {isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Fetch
           </Button>
@@ -192,16 +196,16 @@ export function GameLauncher() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="p-4 bg-red-900 border border-red-700 rounded-lg">
+          <p className="text-sm text-red-200">{error}</p>
         </div>
       )}
 
       {metadata && (
-        <div className="border rounded-lg p-6 space-y-4">
+        <div className="border border-gray-700 bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <h3 className="text-2xl font-bold">{metadata.name}</h3>
-            <p className="text-gray-600 mt-2">{metadata.description}</p>
+            <h3 className="text-2xl font-bold text-white">{metadata.name}</h3>
+            <p className="text-gray-400 mt-2">{metadata.description}</p>
           </div>
 
           {metadata.image && (
