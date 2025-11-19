@@ -12,12 +12,14 @@ import { invoke } from "@tauri-apps/api/core"
 import { appDataDir } from "@tauri-apps/api/path"
 import { join } from "@tauri-apps/api/path"
 import { exists, mkdir, writeFile, readTextFile } from "@tauri-apps/plugin-fs"
+import { detectTargetTriple, getExecutableFilename } from "@/lib/platform"
 
 type GameMetadata = {
   name: string
   description: string
   image: string
-  executable: string
+  executables: Record<string, string>
+  platforms: string[]
 }
 
 type DownloadState = {
@@ -88,11 +90,14 @@ export function GameLauncher() {
       console.log("Game metadata:", collection.metadata)
       setMetadata(collection.metadata.toJSON())
 
-      // Check if game is already downloaded and load cached asset public key
+      // Check if game is already downloaded for current platform
+      const currentTriple = await detectTargetTriple()
+      const executableFilename = getExecutableFilename(currentTriple)
+
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
       const gameDir = await join(gamesDir, candyMachinePublicKey)
-      const executablePath = await join(gameDir, "game.exe")
+      const executablePath = await join(gameDir, executableFilename)
       const metadataPath = await join(gameDir, "metadata.json")
 
       const isDownloaded = await exists(executablePath)
@@ -161,8 +166,19 @@ export function GameLauncher() {
       setError(null)
       setDownloadState({ isDownloading: true, progress: 0, isDownloaded: false })
 
+      // Detect current platform
+      const currentTriple = await detectTargetTriple()
+      console.log("Detected target triple:", currentTriple)
+
+      // Get executable URL for current platform
+      const executableUrl = metadata.executables[currentTriple]
+      if (!executableUrl) {
+        throw new Error(
+          `This game is not available for your platform (${currentTriple}). Available platforms: ${Object.keys(metadata.executables).join(", ")}`
+        )
+      }
+
       // Extract executable CID from metadata
-      const executableUrl = metadata.executable
       const executableCid = extractCidFromUrl(executableUrl)
       console.log("Downloading executable CID:", executableCid)
 
@@ -187,18 +203,20 @@ export function GameLauncher() {
         await mkdir(gameDir)
       }
 
-      // Save executable
-      const executablePath = await join(gameDir, "game.exe")
+      // Save executable with platform-specific filename
+      const executableFilename = getExecutableFilename(currentTriple)
+      const executablePath = await join(gameDir, executableFilename)
       const arrayBuffer = await blob.arrayBuffer()
       const uint8Array = new Uint8Array(arrayBuffer)
 
       await writeFile(executablePath, uint8Array)
 
-      // Save metadata with asset public key for ownership validation
+      // Save metadata with asset public key and target triple for validation
       const metadataPath = await join(gameDir, "metadata.json")
       const metadataWithAsset = {
         ...metadata,
         assetPublicKey: mintedAssetPublicKey,
+        targetTriple: currentTriple,
       }
       const metadataText = JSON.stringify(metadataWithAsset, null, 2)
       await writeFile(metadataPath, new TextEncoder().encode(metadataText))
@@ -245,10 +263,14 @@ export function GameLauncher() {
 
       console.log("Ownership verified! Launching game...")
 
+      // Detect current platform and get executable filename
+      const currentTriple = await detectTargetTriple()
+      const executableFilename = getExecutableFilename(currentTriple)
+
       const appData = await appDataDir()
       const gamesDir = await join(appData, "games")
       const gameDir = await join(gamesDir, candyMachinePublicKey)
-      const executablePath = await join(gameDir, "game.exe")
+      const executablePath = await join(gameDir, executableFilename)
 
       console.log("Launching game:", executablePath)
 

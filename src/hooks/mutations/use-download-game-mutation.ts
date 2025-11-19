@@ -2,10 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipfs } from "@/lib/file-storage/ipfs";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { exists, mkdir, writeFile } from "@tauri-apps/plugin-fs";
+import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
 
 export type DownloadGameVariables = {
   candyMachineAddress: string;
-  executableUrl: string;
+  executables: Record<string, string>;
   assetPublicKey: string;
   walletAddress: string;
   onProgress?: (loaded: number, total: number) => void;
@@ -38,11 +39,23 @@ export function useDownloadGameMutation() {
   return useMutation({
     mutationFn: async ({
       candyMachineAddress,
-      executableUrl,
+      executables,
       assetPublicKey,
       onProgress,
     }: DownloadGameVariables): Promise<void> => {
       console.debug("[useDownloadGameMutation] Downloading game:", candyMachineAddress);
+
+      // Detect current platform
+      const currentTriple = await detectTargetTriple();
+      console.debug("[useDownloadGameMutation] Detected target triple:", currentTriple);
+
+      // Get executable URL for current platform
+      const executableUrl = executables[currentTriple];
+      if (!executableUrl) {
+        throw new Error(
+          `This game is not available for your platform (${currentTriple}). Available platforms: ${Object.keys(executables).join(", ")}`
+        );
+      }
 
       // Setup directories
       const appData = await appDataDir();
@@ -56,11 +69,16 @@ export function useDownloadGameMutation() {
         await mkdir(gameDir);
       }
 
-      // Download executable from IPFS
+      // Download executable from IPFS with platform-specific filename
       const executableCid = extractCidFromUrl(executableUrl);
-      const executablePath = await join(gameDir, "game.exe");
+      const executableFilename = getExecutableFilename(currentTriple);
+      const executablePath = await join(gameDir, executableFilename);
 
-      console.debug("[useDownloadGameMutation] Downloading executable from IPFS:", executableCid);
+      console.debug("[useDownloadGameMutation] Downloading executable from IPFS:", {
+        cid: executableCid,
+        filename: executableFilename,
+        targetTriple: currentTriple,
+      });
 
       const blob = await ipfs.downloadFile(executableCid, (loaded, total) => {
         console.log(`Download progress: ${loaded}/${total}`);
@@ -72,9 +90,13 @@ export function useDownloadGameMutation() {
       const uint8Array = new Uint8Array(arrayBuffer);
       await writeFile(executablePath, uint8Array);
 
-      // Save metadata with asset public key
+      // Save metadata with asset public key and target triple
       const metadataPath = await join(gameDir, "metadata.json");
-      const metadataText = JSON.stringify({ assetPublicKey }, null, 2);
+      const metadataText = JSON.stringify(
+        { assetPublicKey, targetTriple: currentTriple },
+        null,
+        2
+      );
       await writeFile(metadataPath, new TextEncoder().encode(metadataText));
 
       console.debug("[useDownloadGameMutation] Game downloaded successfully");

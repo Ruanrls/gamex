@@ -11,7 +11,8 @@ export interface CreateGameRequest {
   name: string;
   description: string;
   image_url: string;
-  executable_url: string;
+  executables: Record<string, string>; // { "target-triple": "url", ... }
+  platforms: string[]; // ["target-triple-1", "target-triple-2", ...]
   creator: string;
   metadata_uri: string;
   price_lamports: number;
@@ -26,7 +27,8 @@ export interface CreateGameResponse {
   name: string;
   description: string;
   image_url: string;
-  executable_url: string;
+  executables: Record<string, string>; // { "target-triple": "url", ... }
+  platforms: string[]; // ["target-triple-1", "target-triple-2", ...]
   creator: string;
   metadata_uri: string;
   price_lamports: number;

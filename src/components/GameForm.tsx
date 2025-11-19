@@ -13,8 +13,20 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
+import {
+  TARGET_TRIPLES,
+  getAllTargetTriples,
+  type TargetTriple,
+} from "@/lib/platform";
 
 const MAX_IMAGE_SIZE = 5000000; // 5MB
 const MAX_EXECUTABLE_SIZE = 100000000; // 100MB
@@ -24,6 +36,12 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/png",
   "image/webp",
 ];
+
+export type BinaryEntry = {
+  id: string;
+  targetTriple: TargetTriple | null;
+  file: File | null;
+};
 
 const gameFormSchema = z.object({
   name: z
@@ -49,16 +67,12 @@ const gameFormSchema = z.object({
       (files) => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
       "Only .jpg, .jpeg, .png and .webp formats are supported"
     ),
-  executable: z
-    .instanceof(FileList)
-    .refine((files) => files?.length === 1, "Executable file is required")
-    .refine(
-      (files) => files?.[0]?.size <= MAX_EXECUTABLE_SIZE,
-      "Max executable file size is 100MB"
-    ),
+  // Binaries are validated separately in state
 });
 
-type GameFormValues = z.infer<typeof gameFormSchema>;
+type GameFormValues = z.infer<typeof gameFormSchema> & {
+  binaries: BinaryEntry[];
+};
 
 type GameFormProps = {
   onSubmit: (values: GameFormValues) => Promise<void>;
@@ -67,10 +81,13 @@ type GameFormProps = {
 
 export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
   const [preview, setPreview] = useState<string | null>(null);
-  const [executableName, setExecutableName] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState<string>("");
+  const [binaries, setBinaries] = useState<BinaryEntry[]>([
+    { id: crypto.randomUUID(), targetTriple: null, file: null },
+  ]);
+  const [binaryError, setBinaryError] = useState<string | null>(null);
 
-  const form = useForm<GameFormValues>({
+  const form = useForm<Omit<GameFormValues, "binaries">>({
     resolver: zodResolver(gameFormSchema),
     defaultValues: {
       name: "",
@@ -90,15 +107,70 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
     }
   };
 
-  const handleExecutableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setExecutableName(file.name);
+  const addBinary = () => {
+    setBinaries([
+      ...binaries,
+      { id: crypto.randomUUID(), targetTriple: null, file: null },
+    ]);
+  };
+
+  const removeBinary = (id: string) => {
+    if (binaries.length > 1) {
+      setBinaries(binaries.filter((b) => b.id !== id));
     }
   };
 
-  const handleSubmit = async (values: GameFormValues) => {
-    await onSubmit(values);
+  const updateBinary = (id: string, updates: Partial<BinaryEntry>) => {
+    setBinaries(
+      binaries.map((b) => (b.id === id ? { ...b, ...updates } : b))
+    );
+    setBinaryError(null);
+  };
+
+  const validateBinaries = (): boolean => {
+    // Check at least one binary
+    const validBinaries = binaries.filter((b) => b.targetTriple && b.file);
+    if (validBinaries.length === 0) {
+      setBinaryError("Pelo menos um executável é necessário");
+      return false;
+    }
+
+    // Check no duplicates
+    const triples = validBinaries.map((b) => b.targetTriple);
+    const uniqueTriples = new Set(triples);
+    if (uniqueTriples.size !== triples.length) {
+      setBinaryError("Plataformas duplicadas não são permitidas");
+      return false;
+    }
+
+    // Check file sizes
+    for (const binary of validBinaries) {
+      if (binary.file && binary.file.size > MAX_EXECUTABLE_SIZE) {
+        setBinaryError(
+          `${binary.file.name} excede o tamanho máximo de 100MB`
+        );
+        return false;
+      }
+    }
+
+    setBinaryError(null);
+    return true;
+  };
+
+  const getAvailableTriples = (currentId: string): TargetTriple[] => {
+    const usedTriples = binaries
+      .filter((b) => b.id !== currentId && b.targetTriple)
+      .map((b) => b.targetTriple);
+    return getAllTargetTriples().filter((t) => !usedTriples.includes(t));
+  };
+
+  const handleSubmit = async (values: Omit<GameFormValues, "binaries">) => {
+    if (!validateBinaries()) {
+      return;
+    }
+
+    const validBinaries = binaries.filter((b) => b.targetTriple && b.file);
+    await onSubmit({ ...values, binaries: validBinaries });
   };
 
   return (
@@ -203,7 +275,7 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
                   <img
                     src={preview}
                     alt="Game preview"
-                    className="max-w-sm rounded-lg border"
+                    className="w-48 h-auto rounded-lg border border-gray-700"
                   />
                 </div>
               )}
@@ -211,37 +283,108 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="executable"
-          render={({ field: { onChange, value, ...field } }) => (
-            <FormItem>
-              <FormLabel>Game Executable</FormLabel>
-              <FormControl>
-                <Input
-                  type="file"
-                  onChange={(e) => {
-                    onChange(e.target.files);
-                    handleExecutableChange(e);
-                  }}
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription>
-                Upload the game executable file (max 100MB)
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <FormLabel>Executáveis do Jogo</FormLabel>
+              <FormDescription className="mt-1">
+                Adicione executáveis para diferentes plataformas (mín 1, máx 1 por plataforma)
               </FormDescription>
-              <FormMessage />
-              {executableName && (
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
-                  <p className="text-sm text-blue-800">
-                    Selected:{" "}
-                    <span className="font-medium">{executableName}</span>
-                  </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addBinary}
+              disabled={binaries.length >= getAllTargetTriples().length}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Adicionar Binário
+            </Button>
+          </div>
+
+          {binaries.map((binary, index) => (
+            <div
+              key={binary.id}
+              className="p-4 border border-gray-700 rounded-lg space-y-3 bg-gray-800"
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-white">
+                  Binário {index + 1}
+                </span>
+                {binaries.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeBinary(binary.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-gray-300">
+                    Plataforma Alvo
+                  </label>
+                  <Select
+                    value={binary.targetTriple || ""}
+                    onValueChange={(value) =>
+                      updateBinary(binary.id, {
+                        targetTriple: value as TargetTriple,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a plataforma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableTriples(binary.id).map((triple) => (
+                        <SelectItem key={triple} value={triple}>
+                          <div className="flex items-center gap-2">
+                            <span>{TARGET_TRIPLES[triple].icon}</span>
+                            <span>{TARGET_TRIPLES[triple].label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-gray-300">
+                    Arquivo Executável
+                  </label>
+                  <Input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        updateBinary(binary.id, { file });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {binary.file && (
+                <div className="p-2 bg-blue-900/20 border border-blue-700 rounded text-sm">
+                  <span className="text-blue-300">
+                    {binary.file.name} ({(binary.file.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
                 </div>
               )}
-            </FormItem>
+            </div>
+          ))}
+
+          {binaryError && (
+            <div className="p-3 bg-destructive/10 border border-destructive rounded text-sm text-destructive">
+              {binaryError}
+            </div>
           )}
-        />
+        </div>
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

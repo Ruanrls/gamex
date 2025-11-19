@@ -47,18 +47,36 @@ function RouteComponent() {
       }
 
       const imageFile = values.image[0] as File;
-      const executableFile = values.executable[0] as File;
+      const binaries = values.binaries;
 
-      const [imageResult, executableResult] = await Promise.all([
-        ipfs.uploadFile(imageFile),
-        ipfs.uploadFile(executableFile)
+      // Upload image and all executables in parallel
+      const imageUpload = ipfs.uploadFile(imageFile);
+      const executableUploads = binaries.map((binary: any) =>
+        ipfs.uploadFile(binary.file)
+      );
+
+      const [imageResult, ...executableResults] = await Promise.all([
+        imageUpload,
+        ...executableUploads,
       ]);
+
+      // Build executables object and platforms array
+      const executables: Record<string, string> = {};
+      const platforms: string[] = [];
+
+      binaries.forEach((binary: any, index: number) => {
+        const triple = binary.targetTriple;
+        const url = ipfs.getGatewayUrl(executableResults[index].id);
+        executables[triple] = url;
+        platforms.push(triple);
+      });
 
       const metadata = GameMetadataVO.create({
         name: values.name,
         description: values.description,
         image: ipfs.getGatewayUrl(imageResult.id),
-        executable: ipfs.getGatewayUrl(executableResult.id),
+        executables,
+        platforms,
       });
 
       const metadataResult = await ipfs.uploadJson(metadata.toJSON());
@@ -82,7 +100,8 @@ function RouteComponent() {
         name: values.name,
         description: values.description,
         image_url: metadata.image,
-        executable_url: metadata.executable,
+        executables: metadata.executables,
+        platforms: metadata.platforms,
         creator: wallet.address,
         metadata_uri: metadataUri,
         price_lamports: Number(priceLamports),

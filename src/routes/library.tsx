@@ -9,6 +9,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { useLibraryGamesQuery } from "@/hooks/queries/use-library-games-query";
 import { useDownloadGameMutation } from "@/hooks/mutations/use-download-game-mutation";
+import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
 
 export const Route = createFileRoute("/library")({
   component: RouteComponent,
@@ -77,11 +78,17 @@ function RouteComponent() {
         return;
       }
 
-      // Get game executable path
+      // Detect current platform and get executable filename
+      const currentTriple = await detectTargetTriple();
+      const executableFilename = getExecutableFilename(currentTriple);
+
+      // Get game executable path with platform-specific filename
       const appData = await appDataDir();
       const gamesDir = await join(appData, "games");
       const gameDir = await join(gamesDir, game.candyMachinePublicKey);
-      const executablePath = await join(gameDir, "game.exe");
+      const executablePath = await join(gameDir, executableFilename);
+
+      console.log("Launching executable:", executablePath);
 
       // Launch the game
       const result = await invoke<string>("execute_game", { path: executablePath });
@@ -97,7 +104,7 @@ function RouteComponent() {
 
     downloadGameMutation.mutate({
       candyMachineAddress: game.candyMachinePublicKey,
-      executableUrl: game.metadata.executable,
+      executables: game.metadata.executables,
       assetPublicKey: game.assetPublicKey,
       walletAddress: wallet.address,
       onProgress: (loaded, total) => {

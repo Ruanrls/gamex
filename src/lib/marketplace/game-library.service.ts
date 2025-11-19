@@ -4,6 +4,7 @@ import { GameMetadata } from "../blockchain/domain/value-objects/game-metadata.v
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { exists } from "@tauri-apps/plugin-fs";
 import { collectionAddress } from "@metaplex-foundation/mpl-core";
+import { detectTargetTriple, getExecutableFilename } from "../platform";
 
 export type LibraryGame = {
   assetPublicKey: string;
@@ -117,18 +118,26 @@ export class GameLibraryService {
   }
 
   /**
-   * Checks if a game is installed locally
+   * Checks if a game is installed locally for the current platform
    * @param candyMachinePublicKey The candy machine public key (used as folder name)
-   * @returns true if the game executable exists, false otherwise
+   * @returns true if the game executable exists for current platform, false otherwise
    */
   private async checkGameInstallation(
     candyMachinePublicKey: string
   ): Promise<boolean> {
     try {
+      // Detect current platform
+      const currentTriple = await detectTargetTriple();
+      const executableFilename = getExecutableFilename(currentTriple);
+
       const appData = await appDataDir();
       const gamesDir = await join(appData, "games");
       const gameDir = await join(gamesDir, candyMachinePublicKey);
-      const executablePath = await join(gameDir, "game.exe");
+      const executablePath = await join(gameDir, executableFilename);
+
+      console.debug(
+        `[GameLibraryService:checkGameInstallation] Checking for ${executableFilename} at ${executablePath}`
+      );
 
       return await exists(executablePath);
     } catch (error) {

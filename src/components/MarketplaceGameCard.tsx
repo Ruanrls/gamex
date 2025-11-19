@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { lamportsToSol } from "@/lib/blockchain/utils/currency";
 import type { CreateGameResponse } from "@/lib/api/types";
+import { TARGET_TRIPLES, getPlatformFamilies } from "@/lib/platform";
 
 export type MarketplaceGameCardProps = {
   game: CreateGameResponse;
@@ -42,6 +43,16 @@ export function MarketplaceGameCard({
   const priceInSol = lamportsToSol(game.price_lamports);
   const formattedPrice = priceInSol === 0 ? "Grátis" : `${priceInSol.toFixed(2)} SOL`;
 
+  // Get unique platform families from available platforms
+  const platformFamilies = getPlatformFamilies(game.platforms);
+  const platformIcons = platformFamilies.map((family) => {
+    // Get any triple of this family to get the icon
+    const triple = Object.keys(TARGET_TRIPLES).find(
+      (t) => TARGET_TRIPLES[t as keyof typeof TARGET_TRIPLES].platform === family
+    );
+    return triple ? TARGET_TRIPLES[triple as keyof typeof TARGET_TRIPLES].icon : "";
+  });
+
   return (
     <div
       onClick={() => onCardClick(game)}
@@ -61,6 +72,21 @@ export function MarketplaceGameCard({
           }}
         />
       </div>
+
+      {/* Platform Badges */}
+      {platformIcons.length > 0 && (
+        <div className="absolute top-3 right-3 flex gap-1">
+          {platformIcons.map((icon, index) => (
+            <div
+              key={index}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-lg backdrop-blur-sm"
+              title={`Available for ${platformFamilies[index]}`}
+            >
+              {icon}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Title Bar at Bottom */}
       <div className="absolute bottom-12 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-4 py-4">
