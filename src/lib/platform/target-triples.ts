@@ -84,7 +84,12 @@ export function getAllTargetTriples(): TargetTriple[] {
 /**
  * Get platform families from a list of target triples
  */
-export function getPlatformFamilies(triples: string[]): PlatformFamily[] {
+export function getPlatformFamilies(triples: string[] | undefined | null): PlatformFamily[] {
+  // Handle undefined/null/empty cases
+  if (!triples || !Array.isArray(triples) || triples.length === 0) {
+    return [];
+  }
+
   const families = new Set<PlatformFamily>();
 
   triples.forEach(triple => {

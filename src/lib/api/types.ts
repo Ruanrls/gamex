@@ -27,8 +27,8 @@ export interface CreateGameResponse {
   name: string;
   description: string;
   image_url: string;
-  executables: Record<string, string>; // { "target-triple": "url", ... }
-  platforms: string[]; // ["target-triple-1", "target-triple-2", ...]
+  executables?: Record<string, string>; // { "target-triple": "url", ... } - Optional for backward compatibility
+  platforms?: string[]; // ["target-triple-1", "target-triple-2", ...] - Optional for backward compatibility
   creator: string;
   metadata_uri: string;
   price_lamports: number;

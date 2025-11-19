@@ -43,8 +43,8 @@ export function MarketplaceGameCard({
   const priceInSol = lamportsToSol(game.price_lamports);
   const formattedPrice = priceInSol === 0 ? "Grátis" : `${priceInSol.toFixed(2)} SOL`;
 
-  // Get unique platform families from available platforms
-  const platformFamilies = getPlatformFamilies(game.platforms);
+  // Get unique platform families from available platforms (if they exist)
+  const platformFamilies = game.platforms ? getPlatformFamilies(game.platforms) : [];
   const platformIcons = platformFamilies.map((family) => {
     // Get any triple of this family to get the icon
     const triple = Object.keys(TARGET_TRIPLES).find(
