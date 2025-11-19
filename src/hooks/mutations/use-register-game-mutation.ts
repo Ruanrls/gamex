@@ -10,12 +10,17 @@ export function useRegisterGameMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (game: CreateGameRequest): Promise<CreateGameResponse> => {
+    mutationFn: async (
+      game: CreateGameRequest
+    ): Promise<CreateGameResponse> => {
       console.debug("[useRegisterGameMutation] Registering game:", game.name);
 
       const result = await gameApiService.createGame(game);
 
-      console.debug("[useRegisterGameMutation] Game registered successfully:", result._id);
+      console.debug(
+        "[useRegisterGameMutation] Game registered successfully:",
+        result.collection_address
+      );
 
       return result;
     },
@@ -25,7 +30,9 @@ export function useRegisterGameMutation() {
       queryClient.invalidateQueries({ queryKey: ["marketplace-games"] });
       queryClient.invalidateQueries({ queryKey: ["marketplace-search"] });
 
-      console.debug("[useRegisterGameMutation] All marketplace queries invalidated after registration");
+      console.debug(
+        "[useRegisterGameMutation] All marketplace queries invalidated after registration"
+      );
     },
     onError: (error) => {
       console.error("[useRegisterGameMutation] Registration failed:", error);

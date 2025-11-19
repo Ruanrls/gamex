@@ -21,7 +21,6 @@ export interface CreateGameRequest {
  * Response from the backend after creating a game
  */
 export interface CreateGameResponse {
-  _id: string;
   collection_address: string;
   candy_machine_address: string;
   name: string;

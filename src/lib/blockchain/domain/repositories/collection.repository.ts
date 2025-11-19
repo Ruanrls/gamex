@@ -1,4 +1,7 @@
-import { createCollection, fetchCollection } from "@metaplex-foundation/mpl-core";
+import {
+  createCollection,
+  fetchCollection,
+} from "@metaplex-foundation/mpl-core";
 import {
   createSignerFromKeypair,
   generateSigner,
@@ -10,9 +13,18 @@ import { CollectionEntity } from "../entities/collection.entity";
 import { GameMetadataVO } from "../value-objects/game-metadata.vo";
 import { fetch } from "@tauri-apps/plugin-http";
 import { createConfiguredUmi } from "../../umi-instance";
+import {
+  fetchCandyGuard,
+  fetchCandyMachine,
+  findCandyGuardPda,
+} from "@metaplex-foundation/mpl-core-candy-machine";
 
 export interface ICollectionRepository {
-  create(wallet: Wallet, metadata: GameMetadataVO, metadataUri: string): Promise<CollectionEntity>;
+  create(
+    wallet: Wallet,
+    metadata: GameMetadataVO,
+    metadataUri: string
+  ): Promise<CollectionEntity>;
   findByPublicKey(publicKey: string): Promise<CollectionEntity>;
 }
 
@@ -68,14 +80,19 @@ export class CollectionRepository implements ICollectionRepository {
     return CollectionEntity.fromAccount(collection, metadata);
   }
 
-  async findByPublicKey(collectionPublicKey: string): Promise<CollectionEntity> {
+  async findByPublicKey(
+    collectionPublicKey: string
+  ): Promise<CollectionEntity> {
     console.debug(
       "[CollectionRepository:findByPublicKey] fetching collection: ",
       collectionPublicKey
     );
 
     const umi = createConfiguredUmi();
-    const collection = await fetchCollection(umi, publicKey(collectionPublicKey));
+    const collection = await fetchCollection(
+      umi,
+      publicKey(collectionPublicKey)
+    );
 
     console.debug(
       "[CollectionRepository:findByPublicKey] collection fetched: ",
@@ -93,5 +110,43 @@ export class CollectionRepository implements ICollectionRepository {
     );
 
     return CollectionEntity.fromAccount(collection, metadata);
+  }
+
+  async findByCandyMachineAddress(candyMachineAddress: string) {
+    console.debug(
+      "[CollectionRepository:findByCandyMachineAddress] fetching collection for candy machine: ",
+      candyMachineAddress
+    );
+
+    const umi = createConfiguredUmi();
+    const candyMachine = await fetchCandyMachine(
+      umi,
+      publicKey(candyMachineAddress)
+    );
+    const collectionAddress = candyMachine.collectionMint;
+
+    const collection = await fetchCollection(umi, collectionAddress);
+
+    console.debug(
+      "[CollectionRepository:findByCandyMachineAddress] collection fetched: ",
+      collection
+    );
+
+    const [candyGuardPda] = findCandyGuardPda(umi, {
+      base: candyMachine.publicKey,
+    });
+    const guard = await fetchCandyGuard(umi, publicKey(candyGuardPda));
+
+    // Fetch metadata from URI
+    const response = await fetch(collection.uri);
+    const metadataJson = await response.json();
+    const metadata = GameMetadataVO.create(metadataJson);
+
+    console.debug(
+      "[CollectionRepository:findByCandyMachineAddress] metadata fetched: ",
+      metadata
+    );
+
+    return { collection, candyMachine, metadata, guard };
   }
 }

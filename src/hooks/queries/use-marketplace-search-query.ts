@@ -3,6 +3,7 @@ import { gameApiService } from "@/lib/api/game-api.service";
 import { CollectionRepository } from "@/lib/blockchain/domain/repositories/collection.repository";
 import { isSolanaAddress } from "@/lib/utils/solana-validation";
 import type { CreateGameResponse } from "@/lib/api/types";
+import { isOption, isSome, some } from "@metaplex-foundation/umi";
 
 export type UseMarketplaceSearchQueryOptions = {
   query: string;
@@ -43,36 +44,54 @@ export function useMarketplaceSearchQuery({
         isAddress
       );
 
-      // Strategy 1: Collection Address Search
+      // Strategy 1: Candy Machine Address Search
       if (isAddress) {
         try {
           // Query blockchain for fresh collection data
           const collectionRepo = new CollectionRepository();
-          const collection = await collectionRepo.findByPublicKey(trimmedQuery);
+          const { metadata, collection, candyMachine, guard } =
+            await collectionRepo.findByCandyMachineAddress(trimmedQuery);
 
           console.debug(
             "[useMarketplaceSearchQuery] Collection found on blockchain:",
             collection.name
           );
 
-          // Query backend for games with this collection address
-          // The backend search might not support collection_address directly,
-          // so we get all games and filter client-side
-          const allGames = await gameApiService.getAllGames();
-          const gamesWithCollection = allGames.filter(
-            (game) =>
-              game.collection_address.toLowerCase() ===
-              trimmedQuery.toLowerCase()
+          const solPaymentGuard = isSome(guard.guards.solPayment)
+            ? Number(guard.guards.solPayment.value.lamports.basisPoints)
+            : 0;
+
+          console.log(
+            "[useMarketplaceSearchQuery] Sol payment guard:",
+            solPaymentGuard
+          );
+          console.log(
+            "[useMarketplaceSearchQuery] Sol payment guard:",
+            isOption(guard.guards.solFixedFee)
+          );
+          console.log(
+            "[useMarketplaceSearchQuery] Sol payment guard:",
+            isSome(guard.guards.solFixedFee)
+          );
+          console.log(
+            "[useMarketplaceSearchQuery] Sol payment guard:",
+            guard.guards
           );
 
-          console.debug(
-            "[useMarketplaceSearchQuery] Games found with collection:",
-            gamesWithCollection.length
-          );
-
-          // Enrich backend data with fresh blockchain metadata if needed
-          // For now, return backend data as it has all necessary fields
-          return gamesWithCollection;
+          return [
+            {
+              candy_machine_address: trimmedQuery,
+              name: metadata.name,
+              description: metadata.description,
+              price_lamports: solPaymentGuard,
+              image_url: metadata.image,
+              collection_address: collection.publicKey.toString(),
+              metadata_uri: collection.uri,
+              created_at: new Date().toISOString(), // Creation date unknown from blockchain query
+              executable_url: metadata.executable,
+              creator: candyMachine.authority.toString(),
+            },
+          ];
         } catch (error) {
           console.error(
             "[useMarketplaceSearchQuery] Error fetching collection:",
@@ -91,10 +110,7 @@ export function useMarketplaceSearchQuery({
       );
       const games = await gameApiService.searchGames(trimmedQuery);
 
-      console.debug(
-        "[useMarketplaceSearchQuery] Games found:",
-        games.length
-      );
+      console.debug("[useMarketplaceSearchQuery] Games found:", games.length);
 
       return games;
     },

@@ -1,6 +1,11 @@
-import { CollectionV1 } from "@metaplex-foundation/mpl-core";
 import { PublicKey } from "@metaplex-foundation/umi";
 import { GameMetadataVO } from "../value-objects/game-metadata.vo";
+
+type CollectionData = {
+  publicKey: PublicKey;
+  name: string;
+  uri: string;
+};
 
 export class CollectionEntity {
   private constructor(
@@ -11,7 +16,7 @@ export class CollectionEntity {
   ) {}
 
   static fromAccount(
-    account: CollectionV1,
+    account: CollectionData,
     metadata: GameMetadataVO
   ): CollectionEntity {
     return new CollectionEntity(

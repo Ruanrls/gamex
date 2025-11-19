@@ -63,6 +63,10 @@ export class GamePublishingService {
       "[GamePublishingService:publishGame] Generated metadata hash for hidden settings"
     );
 
+    console.log(
+      "🚀 ~ GamePublishingS ervice ~ publishGame ~ priceLamports && priceLamports > 0n:",
+      priceLamports && priceLamports > 0n
+    );
     // Step 3: Create candy machine config with hidden settings
     const candyMachineConfig = CandyMachineConfigVO.create({
       itemsAvailable: UNLIMITED_ITEMS,

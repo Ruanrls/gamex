@@ -233,11 +233,12 @@ function RouteComponent() {
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {games.map((game) => (
             <MarketplaceGameCard
-              key={game._id}
+              key={game.collection_address}
               game={game}
               onCardClick={handleCardClick}
               isLoading={
-                purchaseGameMutation.isPending && selectedGame?._id === game._id
+                purchaseGameMutation.isPending &&
+                selectedGame?.collection_address === game.collection_address
               }
             />
           ))}
