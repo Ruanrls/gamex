@@ -6,6 +6,8 @@ import { useUser } from "@/providers/user.provider";
 import { GamePublishingService } from "@/lib/blockchain/services/game-publishing.service";
 import { GameMetadataVO } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 import { toast } from "sonner";
+import { useRegisterGameMutation } from "@/hooks/mutations/use-register-game-mutation";
+import { solToLamports } from "@/lib/blockchain/utils/currency";
 
 export const Route = createFileRoute("/create")({
   component: RouteComponent,
@@ -33,6 +35,7 @@ function RouteComponent() {
 
   const { wallet } = useUser();
   const [publishResult, setPublishResult] = useState<PublishResult | undefined>(undefined);
+  const registerGameMutation = useRegisterGameMutation();
 
   const [uploadTransition, startUploadTransition] = useTransition();
   const handleGameSubmit = async (values: any) => {
@@ -61,8 +64,40 @@ function RouteComponent() {
       const metadataResult = await ipfs.uploadJson(metadata.toJSON());
       const metadataUri = ipfs.getGatewayUrl(metadataResult.id);
 
+      // Convert price from SOL to lamports
+      const priceLamports = solToLamports(values.price);
+      console.log('[CREATE] Price conversion:', {
+        priceInSOL: values.price,
+        priceLamports: priceLamports.toString(),
+        priceAsNumber: Number(priceLamports)
+      });
+
       const publishingService = new GamePublishingService();
-      const result = await publishingService.publishGame(wallet, metadata, metadataUri);
+      const result = await publishingService.publishGame(wallet, metadata, metadataUri, priceLamports);
+
+      // Register game in database for marketplace indexing
+      const gameData = {
+        collection_address: result.collection.publicKey.toString(),
+        candy_machine_address: result.candyMachine.publicKey.toString(),
+        name: values.name,
+        description: values.description,
+        image_url: metadata.image,
+        executable_url: metadata.executable,
+        creator: wallet.address,
+        metadata_uri: metadataUri,
+        price_lamports: Number(priceLamports),
+      };
+      console.log('[CREATE] Sending game data to API:', gameData);
+
+      registerGameMutation.mutate(gameData, {
+        onSuccess: () => {
+          console.log('Game successfully registered in marketplace database');
+        },
+        onError: (error) => {
+          console.error('Failed to register game in database:', error);
+          toast.error('Game created on blockchain but failed to index in database. Please contact support.');
+        }
+      });
 
       setPublishResult({
         collectionAddress: result.collection.publicKey.toString(),

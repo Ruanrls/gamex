@@ -31,7 +31,8 @@ export default defineConfig(async () => ({
     },
     define: {
         'process.env': {
-            VITE_SOLANA_CLUSTER: process.env.VITE_SOLANA_CLUSTER
+            VITE_SOLANA_CLUSTER: process.env.VITE_SOLANA_CLUSTER,
+            VITE_API_URL: process.env.VITE_API_URL
         },
     },
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

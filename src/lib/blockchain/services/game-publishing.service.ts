@@ -34,10 +34,12 @@ export class GamePublishingService {
   async publishGame(
     wallet: Wallet,
     metadata: GameMetadataVO,
-    metadataUri: string
+    metadataUri: string,
+    priceLamports?: bigint
   ): Promise<GamePublishingResult> {
     console.debug(
-      "[GamePublishingService:publishGame] Starting game publishing process"
+      "[GamePublishingService:publishGame] Starting game publishing process",
+      { price: priceLamports ? `${priceLamports} lamports` : "free" }
     );
 
     // Step 1: Create the collection
@@ -71,6 +73,16 @@ export class GamePublishingService {
         uri: metadataUri,
         hash: metadataHash,
       },
+      // Add guards for price if specified (funds go to creator's wallet)
+      guards:
+        priceLamports && priceLamports > 0n
+          ? {
+              solPayment: {
+                lamports: priceLamports,
+                destination: publicKey(wallet.address),
+              },
+            }
+          : undefined,
     });
 
     // Step 4: Create the candy machine (ready to mint immediately!)

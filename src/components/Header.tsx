@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -7,18 +7,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useUser } from "@/providers/user.provider";
-import { useBalance } from "@/hooks/use-balance";
+import { useBalanceQuery } from "@/hooks/queries/use-balance-query";
 import { requestAirdrop } from "@/lib/blockchain/utils";
 import connection from "@/lib/blockchain/connection";
-import { Coins, RefreshCw, Copy, Check } from "lucide-react";
+import { Coins, RefreshCw, Copy, Check, Key, LogOut } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { PrivateKeyDialog } from "./PrivateKeyDialog";
 
 export function Header() {
-  const { wallet } = useUser();
-  const { data, refetch } = useBalance();
+  const { wallet, logout } = useUser();
+  const navigate = useNavigate();
+  const { data: balance, isLoading, refetch } = useBalanceQuery({ walletAddress: wallet?.address });
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [privateKeyDialogOpen, setPrivateKeyDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [refreshTransition, startRefreshTransition] = useTransition();
   const [airdropTransition, startAirdropTransition] = useTransition();
@@ -56,6 +67,12 @@ export function Header() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+    navigate({ to: "/login" });
+  };
+
   const isLocalhost = connection.rpcEndpoint.includes("localhost");
 
   if (!wallet) {
@@ -79,6 +96,15 @@ export function Header() {
                 Inicio
               </Link>
               <Link
+                to="/marketplace"
+                className="text-lg font-semibold text-gray-400 transition-colors hover:text-pink-500 [&.active]:text-pink-500 [&.active]:border-b-2 [&.active]:border-pink-500 pb-1"
+                activeProps={{
+                  className: "text-pink-500 border-b-2 border-pink-500"
+                }}
+              >
+                Marketplace
+              </Link>
+              <Link
                 to="/library"
                 className="text-lg font-semibold text-gray-400 transition-colors hover:text-pink-500 [&.active]:text-pink-500 [&.active]:border-b-2 [&.active]:border-pink-500 pb-1"
                 activeProps={{
@@ -90,30 +116,50 @@ export function Header() {
             </nav>
 
             {/* Right side - User info */}
-            <div className="flex items-center gap-4">
-              {/* Avatar */}
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">
-                  {wallet.address?.slice(0, 2).toUpperCase()}
-                </span>
-              </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-4 hover:opacity-80 transition-opacity focus:outline-none">
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">
+                      {wallet.address?.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
 
-              {/* Balance */}
-              <div className="flex items-center gap-2">
-                <span className="text-white font-semibold">
-                  {data.isLoading ? "..." : (data.balance / 1e9).toFixed(2)}
-                </span>
-                <Coins className="w-5 h-5 text-blue-400" />
-              </div>
-
-              {/* Deposit Button */}
-              <Button
-                onClick={() => setDialogOpen(true)}
-                size="sm"
-              >
-                Deposit
-              </Button>
-            </div>
+                  {/* Balance */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-semibold">
+                      {isLoading ? "..." : (Math.floor((balance || 0) / 1e9 * 100) / 100).toFixed(2)}
+                    </span>
+                    <Coins className="w-5 h-5 text-blue-400" />
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 bg-gray-900 border-gray-700" align="end">
+                <DropdownMenuLabel className="text-gray-400">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-normal">Wallet</span>
+                    <code className="text-xs text-pink-400 truncate">
+                      {wallet.address?.slice(0, 8)}...{wallet.address?.slice(-8)}
+                    </code>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-gray-700" />
+                <DropdownMenuItem onClick={() => setDialogOpen(true)} className="cursor-pointer text-white hover:bg-gray-800">
+                  <Coins className="w-4 h-4 mr-2" />
+                  Deposit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPrivateKeyDialogOpen(true)} className="cursor-pointer text-white hover:bg-gray-800">
+                  <Key className="w-4 h-4 mr-2" />
+                  Private Key
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-gray-700" />
+                <DropdownMenuItem onClick={handleLogout} variant="destructive" className="cursor-pointer">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -157,7 +203,7 @@ export function Header() {
                 <div className="flex items-center gap-2">
                   <Coins className="w-5 h-5 text-blue-400" />
                   <span className="text-2xl font-bold text-white">
-                    {data.isLoading ? "..." : (data.balance / 1e9).toFixed(4)} SOL
+                    {isLoading ? "..." : (Math.floor((balance || 0) / 1e9 * 10000) / 10000).toFixed(4)} SOL
                   </span>
                 </div>
               </div>
@@ -188,6 +234,8 @@ export function Header() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <PrivateKeyDialog open={privateKeyDialogOpen} onOpenChange={setPrivateKeyDialogOpen} />
     </>
   );
 }

@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MarketplaceRouteImport } from './routes/marketplace'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
 
+const MarketplaceRoute = MarketplaceRouteImport.update({
+  id: '/marketplace',
+  path: '/marketplace',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
+  '/marketplace': typeof MarketplaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
+  '/marketplace': typeof MarketplaceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
+  '/marketplace': typeof MarketplaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/create' | '/library' | '/login'
+  fullPaths: '/' | '/create' | '/library' | '/login' | '/marketplace'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/create' | '/library' | '/login'
-  id: '__root__' | '/' | '/create' | '/library' | '/login'
+  to: '/' | '/create' | '/library' | '/login' | '/marketplace'
+  id: '__root__' | '/' | '/create' | '/library' | '/login' | '/marketplace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
+  MarketplaceRoute: typeof MarketplaceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/marketplace': {
+      id: '/marketplace'
+      path: '/marketplace'
+      fullPath: '/marketplace'
+      preLoaderRoute: typeof MarketplaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
+  MarketplaceRoute: MarketplaceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

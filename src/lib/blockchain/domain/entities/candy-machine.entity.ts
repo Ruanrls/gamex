@@ -1,5 +1,12 @@
 import { PublicKey } from "@metaplex-foundation/umi";
-import { CandyMachine as CandyMachineAccount } from "@metaplex-foundation/mpl-core-candy-machine";
+import {
+  CandyMachine as CandyMachineAccount,
+  CandyGuard,
+} from "@metaplex-foundation/mpl-core-candy-machine";
+
+export interface SolPaymentGuardData {
+  destination: PublicKey;
+}
 
 export class CandyMachineEntity {
   private constructor(
@@ -7,16 +14,52 @@ export class CandyMachineEntity {
     public readonly collection: PublicKey,
     public readonly authority: PublicKey,
     public readonly itemsAvailable: bigint,
-    public readonly itemsLoaded: bigint
+    public readonly itemsLoaded: bigint,
+    public readonly solPaymentGuard?: SolPaymentGuardData
   ) {}
 
-  static fromAccount(account: CandyMachineAccount): CandyMachineEntity {
+  static fromAccount(
+    account: CandyMachineAccount,
+    candyGuard?: CandyGuard | null
+  ): CandyMachineEntity {
+    console.debug(
+      "[CandyMachineEntity:fromAccount] Processing candy machine account"
+    );
+
+    let solPaymentGuard: SolPaymentGuardData | undefined;
+
+    // Extract guards from the separate CandyGuard account
+    if (candyGuard?.guards?.solPayment) {
+      const solPayment = candyGuard.guards.solPayment;
+      console.debug(
+        "[CandyMachineEntity:fromAccount] solPayment guard found: ",
+        solPayment
+      );
+
+      // Handle Option<T> types - check for __option === 'Some'
+      if (solPayment.__option === "Some" && solPayment.value) {
+        console.debug(
+          "[CandyMachineEntity:fromAccount] Extracting solPayment destination: ",
+          solPayment.value.destination
+        );
+        // SolPaymentMintArgs only needs destination (lamports is omitted)
+        solPaymentGuard = {
+          destination: solPayment.value.destination,
+        };
+      }
+    } else {
+      console.debug(
+        "[CandyMachineEntity:fromAccount] No solPayment guard configured"
+      );
+    }
+
     return new CandyMachineEntity(
       account.publicKey,
       account.collectionMint,
       account.authority,
       account.data.itemsAvailable,
-      BigInt(account.itemsLoaded)
+      BigInt(account.itemsLoaded),
+      solPaymentGuard
     );
   }
 

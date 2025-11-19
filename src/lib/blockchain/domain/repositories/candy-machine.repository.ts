@@ -1,6 +1,9 @@
 import {
   create,
   fetchCandyMachine,
+  findCandyGuardPda,
+  fetchCandyGuard,
+  safeFetchCandyGuard,
 } from "@metaplex-foundation/mpl-core-candy-machine";
 import {
   createSignerFromKeypair,
@@ -9,6 +12,8 @@ import {
   signerIdentity,
   some,
   none,
+  sol,
+  lamports,
 } from "@metaplex-foundation/umi";
 import { Wallet } from "../../wallet";
 import { CandyMachineEntity } from "../entities/candy-machine.entity";
@@ -16,7 +21,10 @@ import { CandyMachineConfigVO } from "../value-objects/candy-machine-config.vo";
 import { createConfiguredUmi } from "../../umi-instance";
 
 export interface ICandyMachineRepository {
-  create(wallet: Wallet, config: CandyMachineConfigVO): Promise<CandyMachineEntity>;
+  create(
+    wallet: Wallet,
+    config: CandyMachineConfigVO
+  ): Promise<CandyMachineEntity>;
   findByPublicKey(publicKey: string): Promise<CandyMachineEntity>;
 }
 
@@ -61,6 +69,15 @@ export class CandyMachineRepository implements ICandyMachineRepository {
         hash: config.hiddenSettings.hash,
       }),
       configLineSettings: none(),
+      // Add guards for price configuration
+      guards: config.guards?.solPayment
+        ? {
+            solPayment: some({
+              lamports: lamports(config.guards.solPayment.lamports),
+              destination: config.guards.solPayment.destination,
+            }),
+          }
+        : undefined,
     });
 
     await createInstruction.sendAndConfirm(umi);
@@ -70,16 +87,29 @@ export class CandyMachineRepository implements ICandyMachineRepository {
       candyMachineKeypair.publicKey
     );
 
-    const candyMachine = await fetchCandyMachine(umi, candyMachineKeypair.publicKey);
+    const candyMachine = await fetchCandyMachine(
+      umi,
+      candyMachineKeypair.publicKey
+    );
+    console.debug("[CandyMachineRepository:create] candy machine created");
+
+    // Fetch the candy guard to get the guards configuration
+    const candyGuardPda = findCandyGuardPda(umi, {
+      base: candyMachineKeypair.publicKey,
+    });
+
+    const candyGuard = await fetchCandyGuard(umi, candyGuardPda);
     console.debug(
-      "[CandyMachineRepository:create] candy machine created ",
-      candyMachine
+      "[CandyMachineRepository:create] candy guard created with guards: ",
+      candyGuard.guards
     );
 
-    return CandyMachineEntity.fromAccount(candyMachine);
+    return CandyMachineEntity.fromAccount(candyMachine, candyGuard);
   }
 
-  async findByPublicKey(candyMachinePublicKey: string): Promise<CandyMachineEntity> {
+  async findByPublicKey(
+    candyMachinePublicKey: string
+  ): Promise<CandyMachineEntity> {
     console.debug(
       "[CandyMachineRepository:findByPublicKey] fetching candy machine: ",
       candyMachinePublicKey
@@ -92,10 +122,32 @@ export class CandyMachineRepository implements ICandyMachineRepository {
     );
 
     console.debug(
-      "[CandyMachineRepository:findByPublicKey] candy machine fetched: ",
-      candyMachine
+      "[CandyMachineRepository:findByPublicKey] candy machine fetched"
     );
 
-    return CandyMachineEntity.fromAccount(candyMachine);
+    // Fetch the associated candy guard (where guards are actually stored)
+    const candyGuardPda = findCandyGuardPda(umi, {
+      base: publicKey(candyMachinePublicKey),
+    });
+
+    console.debug(
+      "[CandyMachineRepository:findByPublicKey] fetching candy guard: ",
+      candyGuardPda
+    );
+
+    const candyGuard = await safeFetchCandyGuard(umi, candyGuardPda);
+
+    if (candyGuard) {
+      console.debug(
+        "[CandyMachineRepository:findByPublicKey] candy guard fetched, guards: ",
+        candyGuard.guards
+      );
+    } else {
+      console.debug(
+        "[CandyMachineRepository:findByPublicKey] no candy guard found (no guards configured)"
+      );
+    }
+
+    return CandyMachineEntity.fromAccount(candyMachine, candyGuard);
   }
 }

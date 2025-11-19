@@ -4,6 +4,7 @@ import {
   generateSigner,
   publicKey,
   signerIdentity,
+  some,
 } from "@metaplex-foundation/umi";
 import { AssetV1 } from "@metaplex-foundation/mpl-core";
 import { Wallet } from "../wallet";
@@ -65,11 +66,27 @@ export class GameMintingService {
       assetKeypair.publicKey
     );
 
+    // Prepare mintArgs if guards are present
+    // Note: SolPaymentMintArgs only requires destination (lamports is omitted)
+    const mintArgs = candyMachine.solPaymentGuard
+      ? {
+          solPayment: some({
+            destination: candyMachine.solPaymentGuard.destination,
+          }),
+        }
+      : undefined;
+
+    console.debug(
+      "[GameMintingService:mintFromCandyMachine] Mint args: ",
+      mintArgs
+    );
+
     // Mint from candy machine
     await mintV1(umi, {
       candyMachine: publicKey(candyMachinePublicKey),
       asset: assetKeypair,
       collection: candyMachine.collection,
+      mintArgs,
     }).sendAndConfirm(umi);
 
     console.debug(

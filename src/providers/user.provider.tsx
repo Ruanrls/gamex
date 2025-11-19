@@ -4,10 +4,12 @@ import { createContext, use, useState } from "react";
 export type UserContext = {
   wallet?: Wallet;
   authenticate: (wallet: Wallet) => Promise<void>;
+  logout: () => void;
 };
 
 export const userContext = createContext<UserContext>({
   authenticate: () => Promise.resolve(undefined),
+  logout: () => {},
 });
 
 export function useUser() {
@@ -24,13 +26,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     console.debug("[UserProvider:authenticate] User authenticated");
   };
 
+  const logout = () => {
+    console.debug("[UserProvider:logout] Logging out user");
+    setWallet(undefined);
+  };
 
-  
+
   return (
     <userContext.Provider
       value={{
         wallet,
         authenticate,
+        logout,
       }}
     >
       {children}

@@ -18,8 +18,8 @@ export class GameMetadataVO {
       throw new Error("Game name is required");
     }
 
-    if (!data.description || data.description.trim().length < 10) {
-      throw new Error("Game description must be at least 10 characters");
+    if (!data.description || data.description.trim().length === 0) {
+      throw new Error("Game description must be at least 1 character");
     }
 
     if (!data.image || !data.image.startsWith("http")) {

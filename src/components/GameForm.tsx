@@ -1,7 +1,7 @@
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -10,19 +10,34 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { useState } from "react"
-import { Loader2 } from "lucide-react"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
-const MAX_IMAGE_SIZE = 5000000 // 5MB
-const MAX_EXECUTABLE_SIZE = 100000000 // 100MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+const MAX_IMAGE_SIZE = 5000000; // 5MB
+const MAX_EXECUTABLE_SIZE = 100000000; // 100MB
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+];
 
 const gameFormSchema = z.object({
-  name: z.string().min(1, "Game name is required").max(100, "Game name is too long"),
-  description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description is too long"),
+  name: z
+    .string()
+    .min(1, "Game name is required")
+    .max(100, "Game name is too long"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(500, "Description is too long"),
+  price: z
+    .number({ invalid_type_error: "Price must be a number" })
+    .min(0, "Price must be at least 0 SOL")
+    .max(1000, "Price must be at most 1000 SOL"),
   image: z
     .instanceof(FileList)
     .refine((files) => files?.length === 1, "Image is required")
@@ -41,52 +56,57 @@ const gameFormSchema = z.object({
       (files) => files?.[0]?.size <= MAX_EXECUTABLE_SIZE,
       "Max executable file size is 100MB"
     ),
-})
+});
 
-type GameFormValues = z.infer<typeof gameFormSchema>
+type GameFormValues = z.infer<typeof gameFormSchema>;
 
 type GameFormProps = {
-  onSubmit: (values: GameFormValues) => Promise<void>
-  isLoading?: boolean
-}
+  onSubmit: (values: GameFormValues) => Promise<void>;
+  isLoading?: boolean;
+};
 
 export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
-  const [preview, setPreview] = useState<string | null>(null)
-  const [executableName, setExecutableName] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(null);
+  const [executableName, setExecutableName] = useState<string | null>(null);
+  const [priceInput, setPriceInput] = useState<string>("");
 
   const form = useForm<GameFormValues>({
     resolver: zodResolver(gameFormSchema),
     defaultValues: {
       name: "",
       description: "",
+      price: 0,
     },
-  })
+  });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleExecutableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      setExecutableName(file.name)
+      setExecutableName(file.name);
     }
-  }
+  };
 
   const handleSubmit = async (values: GameFormValues) => {
-    await onSubmit(values)
-  }
+    await onSubmit(values);
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 max-w-2xl mx-auto">
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-6 max-w-2xl mx-auto"
+      >
         <FormField
           control={form.control}
           name="name"
@@ -96,9 +116,7 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
               <FormControl>
                 <Input placeholder="Enter game name" {...field} />
               </FormControl>
-              <FormDescription>
-                The name of your game
-              </FormDescription>
+              <FormDescription>The name of your game</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -128,6 +146,39 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
 
         <FormField
           control={form.control}
+          name="price"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Price (SOL)</FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  placeholder="0.00"
+                  value={priceInput}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty, digits, and single decimal point
+                    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                      setPriceInput(value);
+                      // Convert to number for form state, or 0 if empty
+                      const numValue = value === "" ? 0 : parseFloat(value);
+                      field.onChange(isNaN(numValue) ? 0 : numValue);
+                    }
+                  }}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              </FormControl>
+              <FormDescription>
+                The price for users to mint this game (in SOL). Set to 0 for free.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="image"
           render={({ field: { onChange, value, ...field } }) => (
             <FormItem>
@@ -137,8 +188,8 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
-                    onChange(e.target.files)
-                    handleImageChange(e)
+                    onChange(e.target.files);
+                    handleImageChange(e);
                   }}
                   {...field}
                 />
@@ -170,8 +221,8 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
                 <Input
                   type="file"
                   onChange={(e) => {
-                    onChange(e.target.files)
-                    handleExecutableChange(e)
+                    onChange(e.target.files);
+                    handleExecutableChange(e);
                   }}
                   {...field}
                 />
@@ -183,7 +234,8 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
               {executableName && (
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
                   <p className="text-sm text-blue-800">
-                    Selected: <span className="font-medium">{executableName}</span>
+                    Selected:{" "}
+                    <span className="font-medium">{executableName}</span>
                   </p>
                 </div>
               )}
@@ -193,9 +245,9 @@ export function GameForm({ onSubmit, isLoading = false }: GameFormProps) {
 
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {isLoading ? 'Uploading to IPFS...' : 'Submit Game'}
+          {isLoading ? "Uploading to IPFS..." : "Submit Game"}
         </Button>
       </form>
     </Form>
-  )
+  );
 }

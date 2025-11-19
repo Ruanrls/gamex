@@ -47,4 +47,8 @@ export class Wallet {
         secretKey: this._secretKey
     })
   }
+
+  getPrivateKey(): string {
+    return Buffer.from(this._secretKey).toString('base64');
+  }
 }
