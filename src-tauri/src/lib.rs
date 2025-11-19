@@ -84,7 +84,9 @@ pub fn run() {
                     // Spawn IPFS daemon in offline mode
                     println!("[Tauri] Starting IPFS daemon in offline mode...");
                     let sidecar_command = shell.sidecar("ipfs").unwrap()
-                        .args(["daemon", "--offline", "--init"])
+                        .args(["daemon",
+                        // "--offline", 
+                        "--init"])
                         .envs(env);
 
                     match sidecar_command.spawn() {
