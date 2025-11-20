@@ -122,7 +122,7 @@ function RouteComponent() {
     downloadGameMutation.mutate(
       {
         candyMachineAddress: selectedGame.candy_machine_address,
-        executableUrl: selectedGame.executable_url,
+        executables: selectedGame.executables,
         assetPublicKey: purchasedAssetKey,
         walletAddress: wallet.address,
         onProgress: (loaded, total) => {
