@@ -64,12 +64,18 @@ pub fn run() {
                 // Get app data directory
                 let app_data_dir = app_handle.path().app_data_dir().unwrap();
                 let ipfs_path = app_data_dir.join(".ipfs");
+                println!("[Tauri] IPFS_PATH: {:?}", ipfs_path.to_string_lossy().to_string());
 
-                
+                println!("[Tauri] Creating folder if it does not exist...");
+                // Create the .ipfs directory if it doesn't exist
+                if !ipfs_path.exists() {
+                    std::fs::create_dir_all(&ipfs_path).unwrap();
+                    println!("[Tauri] Created IPFS_PATH directory at {:?}", ipfs_path.to_string_lossy().to_string());
+                }
+
                 // Create environment variables
                 let mut env = HashMap::new();
                 env.insert("IPFS_PATH".to_string(), ipfs_path.to_string_lossy().to_string());
-                println!("[Tauri] IPFS_PATH: {:?}", ipfs_path.to_string_lossy().to_string());
 
                 let shell = app_handle.shell();
 
