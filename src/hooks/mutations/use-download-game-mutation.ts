@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipfs } from "@/lib/file-storage/ipfs";
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { exists, mkdir, open, writeFile } from "@tauri-apps/plugin-fs";
+import { create, exists, mkdir, open, writeFile } from "@tauri-apps/plugin-fs";
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
 import { GameExecutable } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 
@@ -88,12 +88,10 @@ export function useDownloadGameMutation() {
         }
       );
 
+      await mkdir(gameDir, { recursive: true });
+
       // Use streaming download to avoid loading entire file in memory
-      const fileHandle = await open(executablePath, {
-        write: true,
-        create: true,
-        truncate: true,
-      });
+      const fileHandle = await create(executablePath);
 
       try {
         await ipfs.downloadFileStreaming(
