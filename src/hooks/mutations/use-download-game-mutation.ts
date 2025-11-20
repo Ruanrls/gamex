@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipfs } from "@/lib/file-storage/ipfs";
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { exists, mkdir, writeFile } from "@tauri-apps/plugin-fs";
+import { exists, mkdir, open, writeFile } from "@tauri-apps/plugin-fs";
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
 import { GameExecutable } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 
@@ -44,16 +44,26 @@ export function useDownloadGameMutation() {
       assetPublicKey,
       onProgress,
     }: DownloadGameVariables): Promise<void> => {
-      console.debug("[useDownloadGameMutation] Downloading game:", candyMachineAddress);
+      console.debug(
+        "[useDownloadGameMutation] Downloading game:",
+        candyMachineAddress
+      );
 
       // Detect current platform
       const currentTriple = await detectTargetTriple();
-      console.debug("[useDownloadGameMutation] Detected target triple:", currentTriple);
+      console.debug(
+        "[useDownloadGameMutation] Detected target triple:",
+        currentTriple
+      );
 
       // Find executable for current platform
-      const executable = executables.find((exec) => exec.platform === currentTriple);
+      const executable = executables.find(
+        (exec) => exec.platform === currentTriple
+      );
       if (!executable) {
-        const availablePlatforms = executables.map((e) => e.platform).join(", ");
+        const availablePlatforms = executables
+          .map((e) => e.platform)
+          .join(", ");
         throw new Error(
           `This game is not available for your platform (${currentTriple}). Available platforms: ${availablePlatforms}`
         );
@@ -64,33 +74,61 @@ export function useDownloadGameMutation() {
       const gamesDir = await join(appData, "games");
       const gameDir = await join(gamesDir, candyMachineAddress);
 
-      if (!(await exists(gamesDir))) {
-        await mkdir(gamesDir);
-      }
-      if (!(await exists(gameDir))) {
-        await mkdir(gameDir);
-      }
-
       // Download executable from IPFS with platform-specific filename
       const executableCid = extractCidFromUrl(executable.url);
       const executableFilename = getExecutableFilename(currentTriple);
       const executablePath = await join(gameDir, executableFilename);
 
-      console.debug("[useDownloadGameMutation] Downloading executable from IPFS:", {
-        cid: executableCid,
-        filename: executableFilename,
-        targetTriple: currentTriple,
+      console.debug(
+        "[useDownloadGameMutation] Downloading executable from IPFS:",
+        {
+          cid: executableCid,
+          filename: executableFilename,
+          targetTriple: currentTriple,
+        }
+      );
+
+      // Use streaming download to avoid loading entire file in memory
+      const fileHandle = await open(executablePath, {
+        write: true,
+        create: true,
+        truncate: true,
       });
 
-      const blob = await ipfs.downloadFile(executableCid, (loaded, total) => {
-        console.log(`Download progress: ${loaded}/${total}`);
-        onProgress?.(loaded, total);
-      });
+      try {
+        await ipfs.downloadFileStreaming(
+          executableCid,
+          async (chunk, loaded, total) => {
+            // Write each chunk directly to disk
+            await fileHandle.write(chunk);
 
-      // Convert blob to Uint8Array and save
-      const arrayBuffer = await blob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      await writeFile(executablePath, uint8Array);
+            // Report progress
+            console.log(`Download progress: ${loaded}/${total}`);
+            onProgress?.(loaded, total);
+          }
+        );
+      } finally {
+        // Always close the file handle
+        await fileHandle.close();
+      }
+
+      // Pin the file to local IPFS node to become a seeder
+      console.debug(
+        "[useDownloadGameMutation] Pinning file to local IPFS node:",
+        executableCid
+      );
+      try {
+        await ipfs.pinFile(executableCid);
+        console.debug(
+          "[useDownloadGameMutation] File pinned successfully, node is now a seeder"
+        );
+      } catch (error) {
+        console.warn(
+          "[useDownloadGameMutation] Failed to pin file, but download succeeded:",
+          error
+        );
+        // Don't throw - pinning failure shouldn't block the download
+      }
 
       // Save metadata with asset public key and target triple
       const metadataPath = await join(gameDir, "metadata.json");
@@ -108,10 +146,12 @@ export function useDownloadGameMutation() {
       // refetchType: 'active' ensures immediate refetch if the query is currently active
       queryClient.invalidateQueries({
         queryKey: ["library-games", variables.walletAddress],
-        refetchType: 'active'
+        refetchType: "active",
       });
 
-      console.debug("[useDownloadGameMutation] Library games invalidated after download");
+      console.debug(
+        "[useDownloadGameMutation] Library games invalidated after download"
+      );
     },
     onError: (error) => {
       console.error("[useDownloadGameMutation] Download failed:", error);

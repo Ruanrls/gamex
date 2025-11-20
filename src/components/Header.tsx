@@ -27,7 +27,11 @@ import { PrivateKeyDialog } from "./PrivateKeyDialog";
 export function Header() {
   const { wallet, logout } = useUser();
   const navigate = useNavigate();
-  const { data: balance, isLoading, refetch } = useBalanceQuery({ walletAddress: wallet?.address });
+  const {
+    data: balance,
+    isLoading,
+    refetch,
+  } = useBalanceQuery({ walletAddress: wallet?.address });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [privateKeyDialogOpen, setPrivateKeyDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -73,7 +77,9 @@ export function Header() {
     navigate({ to: "/login" });
   };
 
-  const isLocalhost = connection.rpcEndpoint.includes("localhost");
+  const isLocalhost =
+    connection.rpcEndpoint.includes("localhost") ||
+    connection.rpcEndpoint.includes("192.168");
 
   if (!wallet) {
     return null;
@@ -90,7 +96,7 @@ export function Header() {
                 to="/create"
                 className="text-lg font-semibold text-gray-400 transition-colors hover:text-pink-500 [&.active]:text-pink-500 [&.active]:border-b-2 [&.active]:border-pink-500 pb-1"
                 activeProps={{
-                  className: "text-pink-500 border-b-2 border-pink-500"
+                  className: "text-pink-500 border-b-2 border-pink-500",
                 }}
               >
                 Inicio
@@ -99,7 +105,7 @@ export function Header() {
                 to="/marketplace"
                 className="text-lg font-semibold text-gray-400 transition-colors hover:text-pink-500 [&.active]:text-pink-500 [&.active]:border-b-2 [&.active]:border-pink-500 pb-1"
                 activeProps={{
-                  className: "text-pink-500 border-b-2 border-pink-500"
+                  className: "text-pink-500 border-b-2 border-pink-500",
                 }}
               >
                 Marketplace
@@ -108,7 +114,7 @@ export function Header() {
                 to="/library"
                 className="text-lg font-semibold text-gray-400 transition-colors hover:text-pink-500 [&.active]:text-pink-500 [&.active]:border-b-2 [&.active]:border-pink-500 pb-1"
                 activeProps={{
-                  className: "text-pink-500 border-b-2 border-pink-500"
+                  className: "text-pink-500 border-b-2 border-pink-500",
                 }}
               >
                 Library
@@ -129,32 +135,50 @@ export function Header() {
                   {/* Balance */}
                   <div className="flex items-center gap-2">
                     <span className="text-white font-semibold">
-                      {isLoading ? "..." : (Math.floor((balance || 0) / 1e9 * 100) / 100).toFixed(2)}
+                      {isLoading
+                        ? "..."
+                        : (
+                            Math.floor(((balance || 0) / 1e9) * 100) / 100
+                          ).toFixed(2)}
                     </span>
                     <Coins className="w-5 h-5 text-blue-400" />
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-gray-900 border-gray-700" align="end">
+              <DropdownMenuContent
+                className="w-56 bg-gray-900 border-gray-700"
+                align="end"
+              >
                 <DropdownMenuLabel className="text-gray-400">
                   <div className="flex flex-col gap-1">
                     <span className="text-xs font-normal">Wallet</span>
                     <code className="text-xs text-pink-400 truncate">
-                      {wallet.address?.slice(0, 8)}...{wallet.address?.slice(-8)}
+                      {wallet.address?.slice(0, 8)}...
+                      {wallet.address?.slice(-8)}
                     </code>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-gray-700" />
-                <DropdownMenuItem onClick={() => setDialogOpen(true)} className="cursor-pointer text-white hover:bg-gray-800">
+                <DropdownMenuItem
+                  onClick={() => setDialogOpen(true)}
+                  className="cursor-pointer text-white hover:bg-gray-800"
+                >
                   <Coins className="w-4 h-4 mr-2" />
                   Deposit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setPrivateKeyDialogOpen(true)} className="cursor-pointer text-white hover:bg-gray-800">
+                <DropdownMenuItem
+                  onClick={() => setPrivateKeyDialogOpen(true)}
+                  className="cursor-pointer text-white hover:bg-gray-800"
+                >
                   <Key className="w-4 h-4 mr-2" />
                   Private Key
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-gray-700" />
-                <DropdownMenuItem onClick={handleLogout} variant="destructive" className="cursor-pointer">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  variant="destructive"
+                  className="cursor-pointer"
+                >
                   <LogOut className="w-4 h-4 mr-2" />
                   Sair
                 </DropdownMenuItem>
@@ -167,7 +191,9 @@ export function Header() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="bg-gray-900 border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Wallet Details</DialogTitle>
+            <DialogTitle className="text-2xl font-bold">
+              Wallet Details
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
               Manage your wallet and balance
             </DialogDescription>
@@ -176,7 +202,9 @@ export function Header() {
           <div className="space-y-6 mt-4">
             {/* Wallet Address */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">Wallet Address</label>
+              <label className="text-sm font-medium text-gray-300">
+                Wallet Address
+              </label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 bg-gray-800 px-3 py-2 rounded text-xs text-pink-400 break-all">
                   {wallet.address}
@@ -198,12 +226,19 @@ export function Header() {
 
             {/* Balance */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">Current Balance</label>
+              <label className="text-sm font-medium text-gray-300">
+                Current Balance
+              </label>
               <div className="bg-gray-800 px-4 py-3 rounded flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Coins className="w-5 h-5 text-blue-400" />
                   <span className="text-2xl font-bold text-white">
-                    {isLoading ? "..." : (Math.floor((balance || 0) / 1e9 * 10000) / 10000).toFixed(4)} SOL
+                    {isLoading
+                      ? "..."
+                      : (
+                          Math.floor(((balance || 0) / 1e9) * 10000) / 10000
+                        ).toFixed(4)}{" "}
+                    SOL
                   </span>
                 </div>
               </div>
@@ -217,7 +252,11 @@ export function Header() {
                 variant="secondary"
                 className="flex-1"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshTransition ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`w-4 h-4 mr-2 ${
+                    refreshTransition ? "animate-spin" : ""
+                  }`}
+                />
                 {refreshTransition ? "Refreshing..." : "Refresh Balance"}
               </Button>
 
@@ -235,7 +274,10 @@ export function Header() {
         </DialogContent>
       </Dialog>
 
-      <PrivateKeyDialog open={privateKeyDialogOpen} onOpenChange={setPrivateKeyDialogOpen} />
+      <PrivateKeyDialog
+        open={privateKeyDialogOpen}
+        onOpenChange={setPrivateKeyDialogOpen}
+      />
     </>
   );
 }
