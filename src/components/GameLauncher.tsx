@@ -14,12 +14,16 @@ import { join } from "@tauri-apps/api/path"
 import { exists, mkdir, writeFile, readTextFile } from "@tauri-apps/plugin-fs"
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform"
 
+type GameExecutable = {
+  platform: string
+  url: string
+}
+
 type GameMetadata = {
   name: string
   description: string
   image: string
-  executables: Record<string, string>
-  platforms: string[]
+  executables: GameExecutable[]
 }
 
 type DownloadState = {
@@ -170,16 +174,17 @@ export function GameLauncher() {
       const currentTriple = await detectTargetTriple()
       console.log("Detected target triple:", currentTriple)
 
-      // Get executable URL for current platform
-      const executableUrl = metadata.executables[currentTriple]
-      if (!executableUrl) {
+      // Find executable for current platform
+      const executable = metadata.executables.find((exec) => exec.platform === currentTriple)
+      if (!executable) {
+        const availablePlatforms = metadata.executables.map((e) => e.platform).join(", ")
         throw new Error(
-          `This game is not available for your platform (${currentTriple}). Available platforms: ${Object.keys(metadata.executables).join(", ")}`
+          `This game is not available for your platform (${currentTriple}). Available platforms: ${availablePlatforms}`
         )
       }
 
       // Extract executable CID from metadata
-      const executableCid = extractCidFromUrl(executableUrl)
+      const executableCid = extractCidFromUrl(executable.url)
       console.log("Downloading executable CID:", executableCid)
 
       // Download the file from IPFS

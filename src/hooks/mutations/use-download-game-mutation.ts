@@ -3,10 +3,11 @@ import { ipfs } from "@/lib/file-storage/ipfs";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { exists, mkdir, writeFile } from "@tauri-apps/plugin-fs";
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
+import { GameExecutable } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 
 export type DownloadGameVariables = {
   candyMachineAddress: string;
-  executables: Record<string, string>;
+  executables: GameExecutable[];
   assetPublicKey: string;
   walletAddress: string;
   onProgress?: (loaded: number, total: number) => void;
@@ -49,11 +50,12 @@ export function useDownloadGameMutation() {
       const currentTriple = await detectTargetTriple();
       console.debug("[useDownloadGameMutation] Detected target triple:", currentTriple);
 
-      // Get executable URL for current platform
-      const executableUrl = executables[currentTriple];
-      if (!executableUrl) {
+      // Find executable for current platform
+      const executable = executables.find((exec) => exec.platform === currentTriple);
+      if (!executable) {
+        const availablePlatforms = executables.map((e) => e.platform).join(", ");
         throw new Error(
-          `This game is not available for your platform (${currentTriple}). Available platforms: ${Object.keys(executables).join(", ")}`
+          `This game is not available for your platform (${currentTriple}). Available platforms: ${availablePlatforms}`
         );
       }
 
@@ -70,7 +72,7 @@ export function useDownloadGameMutation() {
       }
 
       // Download executable from IPFS with platform-specific filename
-      const executableCid = extractCidFromUrl(executableUrl);
+      const executableCid = extractCidFromUrl(executable.url);
       const executableFilename = getExecutableFilename(currentTriple);
       const executablePath = await join(gameDir, executableFilename);
 

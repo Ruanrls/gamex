@@ -60,23 +60,17 @@ function RouteComponent() {
         ...executableUploads,
       ]);
 
-      // Build executables object and platforms array
-      const executables: Record<string, string> = {};
-      const platforms: string[] = [];
-
-      binaries.forEach((binary: any, index: number) => {
-        const triple = binary.targetTriple;
-        const url = ipfs.getGatewayUrl(executableResults[index].id);
-        executables[triple] = url;
-        platforms.push(triple);
-      });
+      // Build executables array
+      const executables = binaries.map((binary: any, index: number) => ({
+        platform: binary.targetTriple,
+        url: ipfs.getGatewayUrl(executableResults[index].id),
+      }));
 
       const metadata = GameMetadataVO.create({
         name: values.name,
         description: values.description,
         image: ipfs.getGatewayUrl(imageResult.id),
         executables,
-        platforms,
       });
 
       const metadataResult = await ipfs.uploadJson(metadata.toJSON());
@@ -101,7 +95,6 @@ function RouteComponent() {
         description: values.description,
         image_url: metadata.image,
         executables: metadata.executables,
-        platforms: metadata.platforms,
         creator: wallet.address,
         metadata_uri: metadataUri,
         price_lamports: Number(priceLamports),

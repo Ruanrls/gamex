@@ -2,6 +2,11 @@
  * API request and response types for the GameX backend API
  */
 
+export interface GameExecutable {
+  platform: string; // target triple (e.g., "x86_64-pc-windows-msvc")
+  url: string; // IPFS URL or gateway URL
+}
+
 /**
  * Request payload for creating a new game in the database
  */
@@ -11,8 +16,7 @@ export interface CreateGameRequest {
   name: string;
   description: string;
   image_url: string;
-  executables: Record<string, string>; // { "target-triple": "url", ... }
-  platforms: string[]; // ["target-triple-1", "target-triple-2", ...]
+  executables: GameExecutable[];
   creator: string;
   metadata_uri: string;
   price_lamports: number;
@@ -27,8 +31,7 @@ export interface CreateGameResponse {
   name: string;
   description: string;
   image_url: string;
-  executables?: Record<string, string>; // { "target-triple": "url", ... } - Optional for backward compatibility
-  platforms?: string[]; // ["target-triple-1", "target-triple-2", ...] - Optional for backward compatibility
+  executables: GameExecutable[];
   creator: string;
   metadata_uri: string;
   price_lamports: number;
