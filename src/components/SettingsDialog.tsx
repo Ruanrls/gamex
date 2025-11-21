@@ -110,17 +110,19 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             Configurações
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Configure seus endpoints de blockchain e API para descentralização total
+            Configure seus endpoints de blockchain e API para descentralização
+            total
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
           {/* Info Banner */}
-          <div className="flex items-start gap-3 bg-blue-950 border border-blue-800 rounded-lg p-4">
-            <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-200">
-              Essas configurações permitem que você se conecte ao seu próprio nó blockchain e indexador,
-              tornando o launcher totalmente descentralizado. As alterações entram em vigor imediatamente.
+          <div className="flex items-start gap-3 border border-primary rounded-lg p-4">
+            <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <p className="text-sm text-input">
+              Essas configurações permitem que você se conecte ao seu próprio nó
+              blockchain e indexador, tornando o launcher totalmente
+              descentralizado. As alterações entram em vigor imediatamente.
             </p>
           </div>
 
@@ -137,10 +139,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   <SelectValue placeholder="Selecione a rede" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-800 border-gray-700">
-                  <SelectItem value="mainnet" className="text-white hover:bg-gray-700">
+                  <SelectItem
+                    value="mainnet"
+                    className="text-white hover:bg-gray-700"
+                  >
                     Mainnet Beta
                   </SelectItem>
-                  <SelectItem value="custom" className="text-white hover:bg-gray-700">
+                  <SelectItem
+                    value="custom"
+                    className="text-white hover:bg-gray-700"
+                  >
                     RPC Personalizado
                   </SelectItem>
                 </SelectContent>
@@ -148,7 +156,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm text-gray-300">URL do Endpoint RPC</Label>
+              <Label className="text-sm text-gray-300">
+                URL do Endpoint RPC
+              </Label>
               <Input
                 type="text"
                 value={solanaCluster}
@@ -205,12 +215,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             >
               Cancelar
             </Button>
-            <Button
-              onClick={handleSave}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Salvar Alterações
-            </Button>
+            <Button onClick={handleSave}>Salvar Alterações</Button>
           </div>
         </DialogFooter>
       </DialogContent>

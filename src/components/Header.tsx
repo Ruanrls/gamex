@@ -45,7 +45,7 @@ export function Header() {
   const handleRefresh = () => {
     startRefreshTransition(async () => {
       await refetch();
-      toast.success("Balance refreshed!");
+      toast.success("Saldo atualizado!");
     });
   };
 
@@ -59,9 +59,9 @@ export function Header() {
           publicKey: wallet.address,
         });
         await refetch();
-        toast.success("Airdrop successful! Received 1 SOL");
+        toast.success("Airdrop realizado com sucesso! Recebeu 1 SOL");
       } catch (error) {
-        toast.error("Airdrop failed. Please try again.");
+        toast.error("Falha no airdrop. Tente novamente.");
         console.error(error);
       }
     });
@@ -71,7 +71,7 @@ export function Header() {
     if (!wallet) return;
     await navigator.clipboard.writeText(wallet.address);
     setCopied(true);
-    toast.success("Address copied to clipboard!");
+    toast.success("Endereço copiado para a área de transferência!");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -81,11 +81,11 @@ export function Header() {
       clearSettings();
 
       await logout();
-      toast.success("Logged out successfully");
+      toast.success("Logout realizado com sucesso");
       navigate({ to: "/login" });
     } catch (error) {
       console.error("Error logging out:", error);
-      toast.error("Failed to logout");
+      toast.error("Falha ao fazer logout");
     }
   };
 
@@ -129,7 +129,7 @@ export function Header() {
                   className: "text-pink-500 border-b-2 border-pink-500",
                 }}
               >
-                Library
+                Biblioteca
               </Link>
             </nav>
 
@@ -163,7 +163,7 @@ export function Header() {
               >
                 <DropdownMenuLabel className="text-gray-400">
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-normal">Wallet</span>
+                    <span className="text-xs font-normal">Carteira</span>
                     <code className="text-xs text-pink-400 truncate">
                       {wallet.address?.slice(0, 8)}...
                       {wallet.address?.slice(-8)}
@@ -176,14 +176,14 @@ export function Header() {
                   className="cursor-pointer text-white hover:bg-gray-800"
                 >
                   <Coins className="w-4 h-4 mr-2" />
-                  Deposit
+                  Depositar
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setPrivateKeyDialogOpen(true)}
                   className="cursor-pointer text-white hover:bg-gray-800"
                 >
                   <Key className="w-4 h-4 mr-2" />
-                  Private Key
+                  Chave Privada
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setSettingsDialogOpen(true)}
@@ -211,10 +211,10 @@ export function Header() {
         <DialogContent className="bg-gray-900 border-gray-700 text-white">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
-              Wallet Details
+              Detalhes da Carteira
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Manage your wallet and balance
+              Gerencie sua carteira e saldo
             </DialogDescription>
           </DialogHeader>
 
@@ -222,7 +222,7 @@ export function Header() {
             {/* Wallet Address */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300">
-                Wallet Address
+                Endereço da Carteira
               </label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 bg-gray-800 px-3 py-2 rounded text-xs text-pink-400 break-all">
@@ -246,7 +246,7 @@ export function Header() {
             {/* Balance */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300">
-                Current Balance
+                Saldo Atual
               </label>
               <div className="bg-gray-800 px-4 py-3 rounded flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -276,7 +276,7 @@ export function Header() {
                     refreshTransition ? "animate-spin" : ""
                   }`}
                 />
-                {refreshTransition ? "Refreshing..." : "Refresh Balance"}
+                {refreshTransition ? "Atualizando..." : "Atualizar Saldo"}
               </Button>
 
               {isLocalhost && (
@@ -285,7 +285,7 @@ export function Header() {
                   disabled={airdropTransition}
                   className="flex-1"
                 >
-                  {airdropTransition ? "Requesting..." : "Airdrop 1 SOL"}
+                  {airdropTransition ? "Solicitando..." : "Airdrop 1 SOL"}
                 </Button>
               )}
             </div>

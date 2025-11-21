@@ -53,7 +53,7 @@ export function LoginRoute() {
                 }
             } catch (error) {
                 console.error("[LoginRoute] Error checking for existing keypair:", error);
-                toast.error("Failed to load saved wallet");
+                toast.error("Falha ao carregar carteira salva");
             } finally {
                 setIsCheckingStorage(false);
             }
@@ -69,11 +69,11 @@ export function LoginRoute() {
             const wallet = await Wallet.generate();
             console.debug("[LoginRoute:generateWallet] Wallet generated:", wallet.address);
             await userCtx.authenticate(wallet);
-            toast.success("Wallet created successfully!");
+            toast.success("Carteira criada com sucesso!");
             navigate({ to: "/" });
         } catch (error) {
             console.error("[LoginRoute:generateWallet] Error generating wallet:", error);
-            toast.error("Failed to generate wallet");
+            toast.error("Falha ao gerar carteira");
         } finally {
             setIsLoading(false);
         }
@@ -81,7 +81,7 @@ export function LoginRoute() {
 
     const importPrivateKey = useCallback(async () => {
         if (!privateKey.trim()) {
-            toast.error("Please enter a private key");
+            toast.error("Por favor, insira uma chave privada");
             return;
         }
 
@@ -91,12 +91,12 @@ export function LoginRoute() {
             const wallet = await Wallet.fromBase58(privateKey.trim());
             console.debug("[LoginRoute:importPrivateKey] Wallet imported:", wallet.address);
             await userCtx.authenticate(wallet);
-            toast.success("Wallet imported successfully!");
+            toast.success("Carteira importada com sucesso!");
             setIsImportDialogOpen(false);
             navigate({ to: "/" });
         } catch (error) {
             console.error("[LoginRoute:importPrivateKey] Error importing wallet:", error);
-            toast.error("Failed to import wallet. Please check your private key.");
+            toast.error("Falha ao importar carteira. Verifique sua chave privada.");
         } finally {
             setIsLoading(false);
         }
@@ -107,7 +107,7 @@ export function LoginRoute() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-black">
                 <div className="text-center">
-                    <p className="text-gray-400">Loading...</p>
+                    <p className="text-gray-400">Carregando...</p>
                 </div>
             </div>
         );
@@ -118,10 +118,10 @@ export function LoginRoute() {
             <div className="min-h-screen flex items-center justify-center bg-black">
                 <div className="text-center space-y-6">
                     <h1 className="text-4xl font-bold text-white mb-4">
-                        Welcome to GameX
+                        Bem-vindo ao GameX
                     </h1>
                     <p className="text-gray-400 mb-8">
-                        Create or connect your wallet to get started
+                        Crie ou conecte sua carteira para começar
                     </p>
                     <div className="flex flex-col gap-4">
                         <Button
@@ -130,7 +130,7 @@ export function LoginRoute() {
                             className="bg-pink-600 hover:bg-pink-700 text-white font-semibold"
                             disabled={isLoading}
                         >
-                            {isLoading ? "Generating..." : "Generate New Wallet"}
+                            {isLoading ? "Gerando..." : "Gerar Nova Carteira"}
                         </Button>
                         <Button
                             onClick={() => setIsImportDialogOpen(true)}
@@ -139,7 +139,7 @@ export function LoginRoute() {
                             className="border-pink-600 text-pink-600 hover:bg-pink-600 hover:text-white"
                             disabled={isLoading}
                         >
-                            Import Private Key
+                            Importar Chave Privada
                         </Button>
                     </div>
                 </div>
@@ -148,17 +148,17 @@ export function LoginRoute() {
             <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
                 <DialogContent className="bg-gray-900 text-white border-gray-800">
                     <DialogHeader>
-                        <DialogTitle>Import Private Key</DialogTitle>
+                        <DialogTitle>Importar Chave Privada</DialogTitle>
                         <DialogDescription className="text-gray-400">
-                            Enter your Solana private key in base58 format
+                            Digite sua chave privada Solana no formato base58
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <Label htmlFor="privateKey">Private Key</Label>
+                            <Label htmlFor="privateKey">Chave Privada</Label>
                             <Textarea
                                 id="privateKey"
-                                placeholder="Enter your base58 private key..."
+                                placeholder="Digite sua chave privada base58..."
                                 value={privateKey}
                                 onChange={(e) => setPrivateKey(e.target.value)}
                                 className="mt-2 bg-gray-800 border-gray-700 text-white"
@@ -173,14 +173,14 @@ export function LoginRoute() {
                             disabled={isLoading}
                             className="border-gray-700"
                         >
-                            Cancel
+                            Cancelar
                         </Button>
                         <Button
                             onClick={importPrivateKey}
                             disabled={isLoading || !privateKey.trim()}
                             className="bg-pink-600 hover:bg-pink-700"
                         >
-                            {isLoading ? "Importing..." : "Import"}
+                            {isLoading ? "Importando..." : "Importar"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

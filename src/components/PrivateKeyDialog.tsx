@@ -26,7 +26,7 @@ export function PrivateKeyDialog({ open, onOpenChange }: PrivateKeyDialogProps) 
   const handleCopyKey = async () => {
     await navigator.clipboard.writeText(privateKey);
     setCopied(true);
-    toast.success("Private key copied to clipboard!");
+    toast.success("Chave privada copiada para a área de transferência!");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -38,9 +38,9 @@ export function PrivateKeyDialog({ open, onOpenChange }: PrivateKeyDialogProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-gray-900 border-gray-700 text-white">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Private Key</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">Chave Privada</DialogTitle>
           <DialogDescription className="text-gray-400">
-            Your wallet's private key
+            A chave privada da sua carteira
           </DialogDescription>
         </DialogHeader>
 
@@ -49,13 +49,13 @@ export function PrivateKeyDialog({ open, onOpenChange }: PrivateKeyDialogProps) 
           <div className="flex items-start gap-3 bg-red-950 border border-red-800 rounded-lg p-4">
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <p className="text-sm text-red-200">
-              <strong>Never share your private key with anyone!</strong> Anyone with access to your private key can control your wallet and steal your assets.
+              <strong>Nunca compartilhe sua chave privada com ninguém!</strong> Qualquer pessoa com acesso à sua chave privada pode controlar sua carteira e roubar seus ativos.
             </p>
           </div>
 
           {/* Private Key Display */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-300">Private Key</label>
+            <label className="text-sm font-medium text-gray-300">Chave Privada</label>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-gray-800 px-3 py-2 rounded text-xs text-pink-400 break-all font-mono overflow-hidden">
                 {showKey ? privateKey : "•".repeat(88)}
@@ -86,7 +86,7 @@ export function PrivateKeyDialog({ open, onOpenChange }: PrivateKeyDialogProps) 
               </Button>
             </div>
             {!showKey && (
-              <p className="text-xs text-gray-500">Click the eye icon to reveal your private key</p>
+              <p className="text-xs text-gray-500">Clique no ícone do olho para revelar sua chave privada</p>
             )}
           </div>
         </div>
