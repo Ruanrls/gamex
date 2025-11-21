@@ -119,6 +119,10 @@ function RouteComponent() {
   const handleDownloadAfterPurchase = () => {
     if (!wallet || !selectedGame) return;
 
+    console.log(
+      "🚀 ~ handleDownloadAfterPurchase ~ selectedGame.executables:",
+      selectedGame.executables
+    );
     downloadGameMutation.mutate(
       {
         candyMachineAddress: selectedGame.candy_machine_address,

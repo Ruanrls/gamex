@@ -57,8 +57,8 @@ export function PrivateKeyDialog({ open, onOpenChange }: PrivateKeyDialogProps) 
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-300">Private Key</label>
             <div className="flex items-center gap-2">
-              <code className="flex-1 bg-gray-800 px-3 py-2 rounded text-xs text-pink-400 break-all font-mono">
-                {showKey ? privateKey : "•".repeat(64)}
+              <code className="flex-1 bg-gray-800 px-3 py-2 rounded text-xs text-pink-400 break-all font-mono overflow-hidden">
+                {showKey ? privateKey : "•".repeat(88)}
               </code>
               <Button
                 onClick={handleToggleShow}
@@ -77,7 +77,6 @@ export function PrivateKeyDialog({ open, onOpenChange }: PrivateKeyDialogProps) 
                 variant="secondary"
                 size="icon"
                 className="shrink-0"
-                disabled={!showKey}
               >
                 {copied ? (
                   <Check className="w-4 h-4 text-green-500" />

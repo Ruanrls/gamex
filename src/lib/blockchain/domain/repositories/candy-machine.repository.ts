@@ -62,7 +62,6 @@ export class CandyMachineRepository implements ICandyMachineRepository {
       collectionUpdateAuthority: metaplexSigner,
       itemsAvailable: config.itemsAvailable,
       authority: config.authority,
-      // Use hidden settings for unlimited minting
       hiddenSettings: some({
         name: config.hiddenSettings.name,
         uri: config.hiddenSettings.uri,

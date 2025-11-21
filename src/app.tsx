@@ -14,7 +14,7 @@ const router = createRouter({
   context: {
     wallet: undefined,
     authenticate: async () => undefined,
-    logout: () => {},
+    logout: () => Promise.resolve(),
   },
 });
 

@@ -88,7 +88,7 @@ export function useMarketplaceSearchQuery({
               collection_address: collection.publicKey.toString(),
               metadata_uri: collection.uri,
               created_at: new Date().toISOString(), // Creation date unknown from blockchain query
-              executable_url: metadata.executable,
+              executables: metadata.executables,
               creator: candyMachine.authority.toString(),
             },
           ];

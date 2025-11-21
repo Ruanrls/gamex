@@ -71,10 +71,15 @@ export function Header() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLogout = () => {
-    logout();
-    toast.success("Logged out successfully");
-    navigate({ to: "/login" });
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully");
+      navigate({ to: "/login" });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast.error("Failed to logout");
+    }
   };
 
   const isLocalhost =
