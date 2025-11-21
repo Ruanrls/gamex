@@ -9,7 +9,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { useLibraryGamesQuery } from "@/hooks/queries/use-library-games-query";
 import { useDownloadGameMutation } from "@/hooks/mutations/use-download-game-mutation";
+import { useUninstallGameMutation } from "@/hooks/mutations/use-uninstall-game-mutation";
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/library")({
   component: RouteComponent,
@@ -35,6 +45,8 @@ function RouteComponent() {
     walletAddress: wallet?.address
   });
   const downloadGameMutation = useDownloadGameMutation();
+  const uninstallGameMutation = useUninstallGameMutation();
+  const [gameToUninstall, setGameToUninstall] = useState<LibraryGame | null>(null);
 
   const extractCidFromUrl = (input: string): string => {
     const patterns = [
@@ -121,18 +133,80 @@ function RouteComponent() {
     });
   };
 
+  const handleUninstallGame = (game: LibraryGame) => {
+    setGameToUninstall(game);
+  };
+
+  const confirmUninstall = async () => {
+    if (!wallet || !gameToUninstall) return;
+
+    try {
+      // Find the executable for the current platform
+      const currentTriple = await detectTargetTriple();
+      const executable = gameToUninstall.metadata.executables.find(
+        (exec) => exec.platform === currentTriple
+      );
+
+      if (!executable) {
+        alert("Could not find executable for uninstallation");
+        setGameToUninstall(null);
+        return;
+      }
+
+      uninstallGameMutation.mutate({
+        candyMachineAddress: gameToUninstall.candyMachinePublicKey,
+        executableUrl: executable.url,
+        walletAddress: wallet.address,
+      }, {
+        onSuccess: () => {
+          console.log("Game uninstalled successfully");
+          setGameToUninstall(null);
+        },
+        onError: (err) => {
+          console.error("Error uninstalling game:", err);
+          alert(`Failed to uninstall game: ${err}`);
+          setGameToUninstall(null);
+        },
+      });
+    } catch (err) {
+      console.error("Error during uninstallation:", err);
+      alert(`Failed to uninstall game: ${err}`);
+      setGameToUninstall(null);
+    }
+  };
+
   if (!wallet) {
     return null;
   }
 
   return (
-    <div className="container mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold text-white">Game Library</h1>
-        <p className="text-gray-400">
-          Your collection of games on the blockchain
-        </p>
-      </div>
+    <>
+      <Dialog open={!!gameToUninstall} onOpenChange={(open) => !open && setGameToUninstall(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Uninstall Game</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to uninstall "{gameToUninstall?.metadata.name}"? This will delete the game files from your computer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGameToUninstall(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmUninstall}>
+              Uninstall
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="container mx-auto px-4 py-10">
+        <div className="mb-8">
+          <h1 className="mb-2 text-3xl font-bold text-white">Game Library</h1>
+          <p className="text-gray-400">
+            Your collection of games on the blockchain
+          </p>
+        </div>
 
       {isLoading ? (
         <div className="flex min-h-[400px] items-center justify-center">
@@ -167,10 +241,12 @@ function RouteComponent() {
               isInstalled={game.isInstalled}
               onLaunch={() => handleLaunchGame(game)}
               onDownload={() => handleDownloadGame(game)}
+              onUninstall={() => handleUninstallGame(game)}
             />
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

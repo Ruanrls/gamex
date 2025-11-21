@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type GameCardProps = {
@@ -7,6 +7,7 @@ export type GameCardProps = {
   isInstalled: boolean;
   onLaunch: () => void;
   onDownload: () => void;
+  onUninstall?: () => void;
 };
 
 export function GameCard({
@@ -15,6 +16,7 @@ export function GameCard({
   isInstalled,
   onLaunch,
   onDownload,
+  onUninstall,
 }: GameCardProps) {
   const handleClick = () => {
     if (isInstalled) {
@@ -22,6 +24,12 @@ export function GameCard({
     } else {
       onDownload();
     }
+  };
+
+  const handleUninstall = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onUninstall?.();
   };
 
   return (
@@ -43,11 +51,22 @@ export function GameCard({
         />
       </div>
 
+      {/* Trash Icon (only shown when installed) */}
+      {isInstalled && onUninstall && (
+        <button
+          onClick={handleUninstall}
+          className="absolute right-3 top-3 z-20 cursor-pointer rounded-full bg-black/70 p-2 opacity-0 transition-all hover:bg-red-600 group-hover:opacity-100 pointer-events-auto"
+          aria-label="Uninstall game"
+        >
+          <Trash2 className="h-5 w-5 text-white" />
+        </button>
+      )}
+
       {/* Hover Overlay */}
       <div
         className={cn(
-          "absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100",
-          "backdrop-blur-sm"
+          "absolute inset-0 z-10 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100",
+          "pointer-events-none backdrop-blur-sm"
         )}
       >
         {isInstalled ? (

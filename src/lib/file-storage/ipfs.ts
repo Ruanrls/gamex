@@ -221,6 +221,33 @@ export class IPFSService implements FileStorage {
     const result = await response.json();
     console.log("File pinned successfully:", result);
   }
+
+  /**
+   * Unpin a file from the local IPFS node
+   * This removes the file from permanent storage and stops seeding it
+   * @param cid - Content identifier for the file to unpin
+   */
+  async unpinFile(cid: string): Promise<void> {
+    try {
+      const url = `http://localhost:5001/api/v0/pin/rm?arg=${cid}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to unpin file: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log("File unpinned successfully:", result);
+    } catch (error) {
+      // Log but don't throw - unpinning failure shouldn't block uninstall
+      console.warn("Failed to unpin file from IPFS:", error);
+    }
+  }
 }
 
 // Export singleton instance
