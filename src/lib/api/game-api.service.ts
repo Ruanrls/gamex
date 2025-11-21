@@ -107,6 +107,34 @@ export class GameApiService {
   }
 }
 
+class GameApiServiceManager {
+  private service: GameApiService;
+  private currentUrl: string;
+
+  constructor(url: string) {
+    this.currentUrl = url;
+    this.service = new GameApiService(url);
+  }
+
+  getService(): GameApiService {
+    return this.service;
+  }
+
+  updateUrl(url: string): void {
+    if (url !== this.currentUrl) {
+      console.debug(`[GameApiServiceManager] Updating API URL from ${this.currentUrl} to ${url}`);
+      this.currentUrl = url;
+      this.service = new GameApiService(url);
+    }
+  }
+}
+
 // Export a singleton instance with configuration from environment
 const apiUrl = process.env.VITE_API_URL || 'http://localhost:3000';
-export const gameApiService = new GameApiService(apiUrl);
+const gameApiServiceManager = new GameApiServiceManager(apiUrl);
+
+// Export the service for backward compatibility
+export const gameApiService = gameApiServiceManager.getService();
+
+// Export the manager for updating the service
+export { gameApiServiceManager };

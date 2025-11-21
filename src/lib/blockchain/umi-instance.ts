@@ -1,13 +1,13 @@
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplCore } from "@metaplex-foundation/mpl-core";
 import { mplCandyMachine } from "@metaplex-foundation/mpl-core-candy-machine";
-import connection from "./connection";
+import { connectionManager } from "./connection";
 
 /**
  * Create a configured Umi instance with all required programs registered
  */
 export function createConfiguredUmi() {
-  const umi = createUmi(connection.rpcEndpoint);
+  const umi = createUmi(connectionManager.rpcEndpoint);
 
   // Register Metaplex programs
   umi.use(mplCore());

@@ -16,16 +16,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/providers/user.provider";
+import { useSettings } from "@/providers/settings.provider";
 import { useBalanceQuery } from "@/hooks/queries/use-balance-query";
 import { requestAirdrop } from "@/lib/blockchain/utils";
-import connection from "@/lib/blockchain/connection";
-import { Coins, RefreshCw, Copy, Check, Key, LogOut } from "lucide-react";
+import { connectionManager } from "@/lib/blockchain/connection";
+import { Coins, RefreshCw, Copy, Check, Key, LogOut, Settings } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { PrivateKeyDialog } from "./PrivateKeyDialog";
+import { SettingsDialog } from "./SettingsDialog";
 
 export function Header() {
   const { wallet, logout } = useUser();
+  const { clearSettings } = useSettings();
   const navigate = useNavigate();
   const {
     data: balance,
@@ -34,6 +37,7 @@ export function Header() {
   } = useBalanceQuery({ walletAddress: wallet?.address });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [privateKeyDialogOpen, setPrivateKeyDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [refreshTransition, startRefreshTransition] = useTransition();
   const [airdropTransition, startAirdropTransition] = useTransition();
@@ -73,6 +77,9 @@ export function Header() {
 
   const handleLogout = async () => {
     try {
+      // Clear settings before logout to prevent sharing RPC configs between users
+      clearSettings();
+
       await logout();
       toast.success("Logged out successfully");
       navigate({ to: "/login" });
@@ -83,8 +90,8 @@ export function Header() {
   };
 
   const isLocalhost =
-    connection.rpcEndpoint.includes("localhost") ||
-    connection.rpcEndpoint.includes("192.168");
+    connectionManager.rpcEndpoint.includes("localhost") ||
+    connectionManager.rpcEndpoint.includes("192.168");
 
   if (!wallet) {
     return null;
@@ -177,6 +184,13 @@ export function Header() {
                 >
                   <Key className="w-4 h-4 mr-2" />
                   Private Key
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSettingsDialogOpen(true)}
+                  className="cursor-pointer text-white hover:bg-gray-800"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurações
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-gray-700" />
                 <DropdownMenuItem
@@ -282,6 +296,11 @@ export function Header() {
       <PrivateKeyDialog
         open={privateKeyDialogOpen}
         onOpenChange={setPrivateKeyDialogOpen}
+      />
+
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
       />
     </>
   );

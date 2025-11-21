@@ -1,6 +1,7 @@
 import "./App.css";
 import { use } from "react";
 import { userContext, UserProvider } from "./providers/user.provider";
+import { SettingsProvider } from "./providers/settings.provider";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { Toaster } from "./components/ui/sonner";
@@ -34,10 +35,12 @@ function InnerApp() {
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <UserProvider>
-        <InnerApp />
-        <Toaster />
-      </UserProvider>
+      <SettingsProvider>
+        <UserProvider>
+          <InnerApp />
+          <Toaster />
+        </UserProvider>
+      </SettingsProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
