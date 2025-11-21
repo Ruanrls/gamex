@@ -8,6 +8,8 @@ import { GameMetadataVO } from "@/lib/blockchain/domain/value-objects/game-metad
 import { toast } from "sonner";
 import { useRegisterGameMutation } from "@/hooks/mutations/use-register-game-mutation";
 import { solToLamports } from "@/lib/blockchain/utils/currency";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/create")({
   component: RouteComponent,
@@ -34,7 +36,9 @@ function RouteComponent() {
   });
 
   const { wallet } = useUser();
-  const [publishResult, setPublishResult] = useState<PublishResult | undefined>(undefined);
+  const [publishResult, setPublishResult] = useState<PublishResult | undefined>(
+    undefined
+  );
   const registerGameMutation = useRegisterGameMutation();
 
   const [uploadTransition, startUploadTransition] = useTransition();
@@ -42,7 +46,7 @@ function RouteComponent() {
     startUploadTransition(async () => {
       if (!wallet) {
         return navigate({
-          to: "/login"
+          to: "/login",
         });
       }
 
@@ -78,14 +82,19 @@ function RouteComponent() {
 
       // Convert price from SOL to lamports
       const priceLamports = solToLamports(values.price);
-      console.log('[CREATE] Price conversion:', {
+      console.log("[CREATE] Price conversion:", {
         priceInSOL: values.price,
         priceLamports: priceLamports.toString(),
-        priceAsNumber: Number(priceLamports)
+        priceAsNumber: Number(priceLamports),
       });
 
       const publishingService = new GamePublishingService();
-      const result = await publishingService.publishGame(wallet, metadata, metadataUri, priceLamports);
+      const result = await publishingService.publishGame(
+        wallet,
+        metadata,
+        metadataUri,
+        priceLamports
+      );
 
       // Register game in database for marketplace indexing
       const gameData = {
@@ -99,23 +108,25 @@ function RouteComponent() {
         metadata_uri: metadataUri,
         price_lamports: Number(priceLamports),
       };
-      console.log('[CREATE] Sending game data to API:', gameData);
+      console.log("[CREATE] Sending game data to API:", gameData);
 
       registerGameMutation.mutate(gameData, {
         onSuccess: () => {
-          console.log('Game successfully registered in marketplace database');
+          console.log("Game successfully registered in marketplace database");
         },
         onError: (error) => {
-          console.error('Failed to register game in database:', error);
-          toast.error('Game created on blockchain but failed to index in database. Please contact support.');
-        }
+          console.error("Failed to register game in database:", error);
+          toast.error(
+            "Jogo criado na blockchain mas falhou ao indexar no banco de dados. Por favor, contate o suporte."
+          );
+        },
       });
 
       setPublishResult({
         collectionAddress: result.collection.publicKey.toString(),
         candyMachineAddress: result.candyMachine.publicKey.toString(),
       });
-      toast("Game uploaded and candy machine created successfully!");
+      toast("Jogo enviado e candy machine criada com sucesso!");
     });
   };
 
@@ -127,20 +138,32 @@ function RouteComponent() {
 
   return (
     <div className="container mx-auto py-10 px-4">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-4 text-white">Create Game</h1>
-        <p className="text-gray-400 mb-8">
-          Upload your game and generate an NFT collection with Candy Machine on Solana blockchain.
-        </p>
+      <div className="mx-auto">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Criar Jogo</h1>
+            <p className="text-gray-400 mt-2">
+              Envie seu jogo e gere uma coleção NFT com Candy Machine na blockchain
+              Solana.
+            </p>
+          </div>
+          <Button type="submit" form="game-form" disabled={uploadTransition}>
+            {uploadTransition && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {uploadTransition ? "Enviando para IPFS..." : "Publicar Jogo"}
+          </Button>
+        </div>
+        <div className="mb-8" />
 
         <Activity mode={publishResult ? "visible" : "hidden"}>
           <div className="mb-8 p-4 bg-gray-900 border border-gray-700 rounded-lg space-y-3">
             <div>
-              <h3 className="font-semibold mb-1 text-white">Game Published Successfully!</h3>
+              <h3 className="font-semibold mb-1 text-white">
+                Jogo Publicado com Sucesso!
+              </h3>
             </div>
             <div>
               <p className="text-sm text-gray-400">
-                <span className="font-medium">Collection Address:</span>{" "}
+                <span className="font-medium">Endereço da Coleção:</span>{" "}
                 <code className="bg-gray-800 px-2 py-1 rounded text-xs text-pink-400 block mt-1">
                   {publishResult?.collectionAddress}
                 </code>
@@ -148,19 +171,20 @@ function RouteComponent() {
             </div>
             <div>
               <p className="text-sm text-gray-400">
-                <span className="font-medium">Candy Machine Address:</span>{" "}
+                <span className="font-medium">Endereço da Candy Machine:</span>{" "}
                 <code className="bg-gray-800 px-2 py-1 rounded text-xs text-green-400 block mt-1">
                   {publishResult?.candyMachineAddress}
                 </code>
               </p>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Users can mint this game by using the Candy Machine address.
+              Os usuários podem adquirir este jogo usando o endereço da Candy
+              Machine.
             </p>
           </div>
         </Activity>
 
-        <GameForm onSubmit={handleGameSubmit} isLoading={uploadTransition} />
+        <GameForm onSubmit={handleGameSubmit} />
       </div>
     </div>
   );
