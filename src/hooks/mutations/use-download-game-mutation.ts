@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ipfs } from "@/lib/file-storage/ipfs";
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { create, exists, mkdir, open, writeFile } from "@tauri-apps/plugin-fs";
+import { create, mkdir, writeFile } from "@tauri-apps/plugin-fs";
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
 import { GameExecutable } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 
@@ -10,25 +10,11 @@ export type DownloadGameVariables = {
   executables: GameExecutable[];
   assetPublicKey: string;
   walletAddress: string;
+  metadataUri: string;
+  imageUrl: string;
   onProgress?: (loaded: number, total: number) => void;
 };
 
-const extractCidFromUrl = (input: string): string => {
-  const patterns = [
-    /ipfs\/([a-zA-Z0-9]+)/,
-    /^(Qm[a-zA-Z0-9]{44}|bafybei[a-z2-7]{52}|bafy[a-z2-7]+)$/,
-    /([a-zA-Z0-9]+)\.ipfs/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = input.match(pattern);
-    if (match) {
-      return match[1] || match[0];
-    }
-  }
-
-  return input.trim();
-};
 
 /**
  * Mutation hook for downloading a game
@@ -42,6 +28,8 @@ export function useDownloadGameMutation() {
       candyMachineAddress,
       executables,
       assetPublicKey,
+      metadataUri,
+      imageUrl,
       onProgress,
     }: DownloadGameVariables): Promise<void> => {
       console.debug(
@@ -75,7 +63,11 @@ export function useDownloadGameMutation() {
       const gameDir = await join(gamesDir, candyMachineAddress);
 
       // Download executable from IPFS with platform-specific filename
-      const executableCid = extractCidFromUrl(executable.url);
+      const executableCid = ipfs.extractCidFromUrl(executable.url);
+      if (!executableCid) {
+        throw new Error(`Invalid executable URL: ${executable.url}`);
+      }
+
       const executableFilename = getExecutableFilename(currentTriple);
       const executablePath = await join(gameDir, executableFilename);
 
@@ -90,11 +82,11 @@ export function useDownloadGameMutation() {
 
       await mkdir(gameDir, { recursive: true });
 
-      // Use streaming download to avoid loading entire file in memory
+      // Use streaming download with availability check to avoid indefinite hanging
       const fileHandle = await create(executablePath);
 
       try {
-        await ipfs.downloadFileStreaming(
+        await ipfs.downloadWithAvailabilityCheck(
           executableCid,
           async (chunk, loaded, total) => {
             // Write each chunk directly to disk
@@ -110,19 +102,30 @@ export function useDownloadGameMutation() {
         await fileHandle.close();
       }
 
-      // Pin the file to local IPFS node to become a seeder
+      // Pin executable, metadata, and image to local IPFS node to become a complete seeder
       console.debug(
-        "[useDownloadGameMutation] Pinning file to local IPFS node:",
-        executableCid
+        "[useDownloadGameMutation] Pinning game files to local IPFS node"
       );
       try {
-        await ipfs.pinFile(executableCid);
+        const metadataCid = ipfs.extractCidFromUrl(metadataUri);
+        const imageCid = ipfs.extractCidFromUrl(imageUrl);
+
+        const cidsToPin = [executableCid];
+        if (metadataCid) cidsToPin.push(metadataCid);
+        if (imageCid) cidsToPin.push(imageCid);
+
         console.debug(
-          "[useDownloadGameMutation] File pinned successfully, node is now a seeder"
+          `[useDownloadGameMutation] Pinning ${cidsToPin.length} files:`,
+          { executable: executableCid, metadata: metadataCid, image: imageCid }
+        );
+
+        await ipfs.pinMultipleFiles(cidsToPin);
+        console.debug(
+          "[useDownloadGameMutation] Files pinned successfully, node is now a complete seeder"
         );
       } catch (error) {
         console.warn(
-          "[useDownloadGameMutation] Failed to pin file, but download succeeded:",
+          "[useDownloadGameMutation] Failed to pin some files, but download succeeded:",
           error
         );
         // Don't throw - pinning failure shouldn't block the download

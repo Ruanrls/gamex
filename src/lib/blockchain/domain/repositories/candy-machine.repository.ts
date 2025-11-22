@@ -12,7 +12,6 @@ import {
   signerIdentity,
   some,
   none,
-  sol,
   lamports,
 } from "@metaplex-foundation/umi";
 import { Wallet } from "../../wallet";

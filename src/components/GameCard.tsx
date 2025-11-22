@@ -1,4 +1,4 @@
-import { Download, Trash2 } from "lucide-react";
+import { Download, Trash2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -7,6 +7,8 @@ export type GameCardProps = {
   imageUrl: string;
   categories?: string[];
   isInstalled: boolean;
+  isAvailable?: boolean;
+  unavailabilityReason?: string;
   onLaunch: () => void;
   onDownload: () => void;
   onUninstall?: () => void;
@@ -17,11 +19,16 @@ export function GameCard({
   imageUrl,
   categories = [],
   isInstalled,
+  isAvailable = true,
+  unavailabilityReason,
   onLaunch,
   onDownload,
   onUninstall,
 }: GameCardProps) {
   const handleClick = () => {
+    // Don't allow interactions if game is unavailable
+    if (!isAvailable) return;
+
     if (isInstalled) {
       onLaunch();
     } else {
@@ -38,14 +45,23 @@ export function GameCard({
   return (
     <div
       onClick={handleClick}
-      className="group relative cursor-pointer overflow-hidden rounded-2xl bg-neutral-800 transition-all hover:scale-105 hover:shadow-xl"
+      className={cn(
+        "group relative overflow-hidden rounded-2xl bg-neutral-800 transition-all",
+        isAvailable
+          ? "cursor-pointer hover:scale-105 hover:shadow-xl"
+          : "opacity-60 cursor-not-allowed"
+      )}
+      title={!isAvailable ? unavailabilityReason : undefined}
     >
       {/* Game Image */}
       <div className="aspect-[3/4] w-full overflow-hidden bg-neutral-700">
         <img
           src={imageUrl}
           alt={title}
-          className="h-full w-full object-cover transition-transform group-hover:scale-110"
+          className={cn(
+            "h-full w-full object-cover transition-transform",
+            isAvailable && "group-hover:scale-110"
+          )}
           onError={(e) => {
             // Fallback for broken images
             const target = e.target as HTMLImageElement;
@@ -54,6 +70,14 @@ export function GameCard({
           }}
         />
       </div>
+
+      {/* Unavailable Badge */}
+      {!isAvailable && (
+        <div className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1.5 shadow-lg">
+          <AlertCircle className="h-4 w-4 text-white" />
+          <span className="text-xs font-semibold text-white">Indisponível</span>
+        </div>
+      )}
 
       {/* Trash Icon (only shown when installed) */}
       {isInstalled && onUninstall && (
@@ -66,24 +90,26 @@ export function GameCard({
         </button>
       )}
 
-      {/* Hover Overlay */}
-      <div
-        className={cn(
-          "absolute inset-0 z-10 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100",
-          "pointer-events-none backdrop-blur-sm"
-        )}
-      >
-        {isInstalled ? (
-          <div className="text-center">
-            <p className="text-3xl font-bold text-white">Iniciar</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <Download className="h-12 w-12 text-white" />
-            <p className="text-lg font-semibold text-white">Download</p>
-          </div>
-        )}
-      </div>
+      {/* Hover Overlay (only shown when available) */}
+      {isAvailable && (
+        <div
+          className={cn(
+            "absolute inset-0 z-10 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100",
+            "pointer-events-none backdrop-blur-sm"
+          )}
+        >
+          {isInstalled ? (
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">Iniciar</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <Download className="h-12 w-12 text-white" />
+              <p className="text-lg font-semibold text-white">Download</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Categories */}
       {categories.length > 0 && (

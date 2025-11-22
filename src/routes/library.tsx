@@ -131,6 +131,24 @@ function RouteComponent() {
     }
   };
 
+  const getDownloadErrorMessage = (error: Error): string => {
+    const errorMessage = error.message.toLowerCase();
+
+    if (errorMessage.includes("content not available") || errorMessage.includes("no peers found")) {
+      return "Jogo indisponível na rede IPFS. Nenhum peer encontrado hospedando este jogo. O conteúdo pode ter sido removido ou está temporariamente indisponível.";
+    }
+
+    if (errorMessage.includes("timeout")) {
+      return "Tempo limite de download excedido. Verifique sua conexão com a internet.";
+    }
+
+    if (errorMessage.includes("not available for your platform")) {
+      return error.message; // Keep the original platform-specific message
+    }
+
+    return `Falha ao baixar o jogo: ${error.message}`;
+  };
+
   const handleDownloadGame = async (game: LibraryGame) => {
     if (!wallet) return;
 
@@ -139,6 +157,8 @@ function RouteComponent() {
       executables: game.metadata.executables,
       assetPublicKey: game.assetPublicKey,
       walletAddress: wallet.address,
+      metadataUri: game.metadataUri,
+      imageUrl: game.metadata.image,
       onProgress: (loaded, total) => {
         console.log(`Download progress: ${loaded}/${total}`);
       },
@@ -148,7 +168,7 @@ function RouteComponent() {
       },
       onError: (err) => {
         console.error("Error downloading game:", err);
-        alert(`Falha ao baixar o jogo: ${err}`);
+        alert(getDownloadErrorMessage(err as Error));
       },
     });
   };
@@ -176,6 +196,8 @@ function RouteComponent() {
       uninstallGameMutation.mutate({
         candyMachineAddress: gameToUninstall.candyMachinePublicKey,
         executableUrl: executable.url,
+        metadataUri: gameToUninstall.metadataUri,
+        imageUrl: gameToUninstall.metadata.image,
         walletAddress: wallet.address,
       }, {
         onSuccess: () => {
@@ -317,6 +339,8 @@ function RouteComponent() {
               imageUrl={getLocalImageUrl(game.metadata.image)}
               categories={game.metadata.categories}
               isInstalled={game.isInstalled}
+              isAvailable={game.isAvailable}
+              unavailabilityReason={game.unavailabilityReason}
               onLaunch={() => handleLaunchGame(game)}
               onDownload={() => handleDownloadGame(game)}
               onUninstall={() => handleUninstallGame(game)}

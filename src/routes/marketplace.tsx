@@ -135,6 +135,24 @@ function RouteComponent() {
     );
   };
 
+  const getDownloadErrorMessage = (error: Error): string => {
+    const errorMessage = error.message.toLowerCase();
+
+    if (errorMessage.includes("content not available") || errorMessage.includes("no peers found")) {
+      return "Jogo indisponível na rede IPFS. Nenhum peer encontrado hospedando este jogo. O conteúdo pode ter sido removido ou está temporariamente indisponível.";
+    }
+
+    if (errorMessage.includes("timeout")) {
+      return "Tempo limite de download excedido. Verifique sua conexão com a internet.";
+    }
+
+    if (errorMessage.includes("not available for your platform")) {
+      return error.message; // Keep the original platform-specific message
+    }
+
+    return `Erro ao baixar o jogo: ${error.message}`;
+  };
+
   const handleDownloadAfterPurchase = () => {
     if (!wallet || !selectedGame) return;
 
@@ -148,6 +166,8 @@ function RouteComponent() {
         executables: selectedGame.executables,
         assetPublicKey: purchasedAssetKey,
         walletAddress: wallet.address,
+        metadataUri: selectedGame.metadata_uri,
+        imageUrl: selectedGame.image_url,
         onProgress: (loaded, total) => {
           console.log(`Download progress: ${loaded}/${total}`);
         },
@@ -163,7 +183,7 @@ function RouteComponent() {
         },
         onError: (err) => {
           console.error("Error downloading game:", err);
-          alert(`Erro ao baixar o jogo: ${err}`);
+          alert(getDownloadErrorMessage(err as Error));
         },
       }
     );

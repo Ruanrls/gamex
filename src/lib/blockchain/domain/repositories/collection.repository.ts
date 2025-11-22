@@ -11,13 +11,13 @@ import {
 import { Wallet } from "../../wallet";
 import { CollectionEntity } from "../entities/collection.entity";
 import { GameMetadataVO } from "../value-objects/game-metadata.vo";
-import { fetch } from "@tauri-apps/plugin-http";
 import { createConfiguredUmi } from "../../umi-instance";
 import {
   fetchCandyGuard,
   fetchCandyMachine,
   findCandyGuardPda,
 } from "@metaplex-foundation/mpl-core-candy-machine";
+import { ipfs } from "../../../file-storage/ipfs";
 
 export interface ICollectionRepository {
   create(
@@ -99,9 +99,10 @@ export class CollectionRepository implements ICollectionRepository {
       collection
     );
 
-    // Fetch metadata from URI
-    const response = await fetch(collection.uri);
-    const metadataJson = await response.json();
+    // Fetch metadata from URI with availability check
+    const metadataJson = await ipfs.fetchMetadataWithAvailabilityCheck(
+      collection.uri
+    );
     const metadata = GameMetadataVO.create(metadataJson);
 
     console.debug(
@@ -137,9 +138,10 @@ export class CollectionRepository implements ICollectionRepository {
     });
     const guard = await fetchCandyGuard(umi, publicKey(candyGuardPda));
 
-    // Fetch metadata from URI
-    const response = await fetch(collection.uri);
-    const metadataJson = await response.json();
+    // Fetch metadata from URI with availability check
+    const metadataJson = await ipfs.fetchMetadataWithAvailabilityCheck(
+      collection.uri
+    );
     const metadata = GameMetadataVO.create(metadataJson);
 
     console.debug(

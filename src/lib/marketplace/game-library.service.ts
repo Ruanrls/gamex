@@ -12,6 +12,9 @@ export type LibraryGame = {
   metadata: GameMetadata;
   isInstalled: boolean;
   collectionPublicKey: string;
+  metadataUri: string;
+  isAvailable: boolean;
+  unavailabilityReason?: string;
 };
 
 export class GameLibraryService {
@@ -21,6 +24,25 @@ export class GameLibraryService {
   constructor() {
     this.assetOwnershipService = new AssetOwnershipService();
     this.collectionRepository = new CollectionRepository();
+  }
+
+  /**
+   * Converts IPFS availability error messages to user-friendly Portuguese
+   * @param error Error object from IPFS operations
+   * @returns Translated user-friendly error message
+   */
+  private getUnavailabilityMessage(error: any): string {
+    const errorMessage = error?.message?.toLowerCase() || "";
+
+    if (errorMessage.includes("no peers found") || errorMessage.includes("metadata not available")) {
+      return "Nenhum peer encontrado para este jogo. O conteúdo pode ter sido removido ou está temporariamente indisponível na rede IPFS.";
+    }
+
+    if (errorMessage.includes("timeout") || errorMessage.includes("provider may not be responding")) {
+      return "Tempo limite excedido ao buscar os dados do jogo. Os peers podem não estar respondendo ou o conteúdo está indisponível.";
+    }
+
+    return "Jogo indisponível. Não foi possível carregar os dados da rede IPFS.";
   }
 
   /**
@@ -86,13 +108,54 @@ export class GameLibraryService {
               metadata: collection.metadata.toJSON(),
               isInstalled,
               collectionPublicKey,
+              metadataUri: collection.uri,
+              isAvailable: true,
             } as LibraryGame;
-          } catch (error) {
+          } catch (error: any) {
             console.error(
               `[GameLibraryService:getLibraryGames] Error processing asset ${asset.publicKey}:`,
               error
             );
-            // Skip assets that fail to process (might not be game assets)
+
+            // Check if this is a metadata availability error
+            const errorMessage = error?.message?.toLowerCase() || "";
+            const isMetadataUnavailable =
+              errorMessage.includes("metadata not available") ||
+              errorMessage.includes("no peers found") ||
+              errorMessage.includes("timeout") ||
+              errorMessage.includes("provider may not be responding");
+
+            if (isMetadataUnavailable) {
+              // Get collection public key even if metadata fetch failed
+              const collectionPublicKeyObj = collectionAddress(asset);
+              const collectionPublicKey = collectionPublicKeyObj
+                ? collectionPublicKeyObj.toString()
+                : asset.publicKey.toString();
+
+              console.warn(
+                `[GameLibraryService:getLibraryGames] Metadata unavailable for asset ${asset.publicKey}, including in library as unavailable`
+              );
+
+              // Return game with unavailable status instead of skipping it
+              return {
+                assetPublicKey: asset.publicKey.toString(),
+                candyMachinePublicKey: collectionPublicKey,
+                metadata: {
+                  name: "Jogo Indisponível",
+                  description: "Metadados não disponíveis na rede IPFS",
+                  image: "",
+                  categories: [],
+                  executables: [],
+                },
+                isInstalled: false,
+                collectionPublicKey,
+                metadataUri: "",
+                isAvailable: false,
+                unavailabilityReason: this.getUnavailabilityMessage(error),
+              } as LibraryGame;
+            }
+
+            // For other errors, skip the asset (might not be a game asset)
             return null;
           }
         })

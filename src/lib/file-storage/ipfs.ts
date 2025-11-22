@@ -138,66 +138,313 @@ export class IPFSService implements FileStorage {
   }
 
   /**
+   * Extract CID from an IPFS gateway URL or ipfs:// URI
+   * @param url - Gateway URL or IPFS URI
+   * @returns CID string or null if not found
+   */
+  extractCidFromUrl(url: string): string | null {
+    if (!url) return null;
+
+    // Handle ipfs:// protocol
+    if (url.startsWith("ipfs://")) {
+      return url.replace("ipfs://", "");
+    }
+
+    // Handle gateway URLs (http://gateway/ipfs/CID or https://gateway/ipfs/CID)
+    const match = url.match(/\/ipfs\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+  }
+
+  /**
    * Fetch metadata JSON from IPFS by CID
    * @param cid - Content identifier for the metadata JSON
+   * @param timeoutMs - Optional timeout in milliseconds (default: 30000ms / 30s)
    * @returns Parsed metadata object
    */
-  async fetchMetadata(cid: string): Promise<any> {
-    const url = `http://localhost:5001/api/v0/cat?arg=${cid}`;
+  async fetchMetadata(cid: string, timeoutMs: number = 30000): Promise<any> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch(url, {
-      method: "POST",
-    });
+    try {
+      const url = `http://localhost:5001/api/v0/cat?arg=${cid}`;
 
-    if (!response.ok) {
+      const response = await fetch(url, {
+        method: "POST",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch metadata: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const text = await response.text();
+      return JSON.parse(text);
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        throw new Error(
+          `Metadata fetch timeout after ${timeoutMs}ms. The provider may not be responding or the content is unavailable.`
+        );
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Fetch metadata from IPFS with pre-flight availability check
+   * Prevents infinite loading when metadata has no providers
+   * @param uri - IPFS URI (can be gateway URL or ipfs:// protocol)
+   * @param availabilityTimeoutMs - Timeout for availability check (default: 10000ms / 10s)
+   * @returns Parsed metadata object
+   * @throws Error if metadata is not available or fetch fails
+   */
+  async fetchMetadataWithAvailabilityCheck(
+    uri: string,
+    availabilityTimeoutMs: number = 10000
+  ): Promise<any> {
+    console.debug(
+      `[IPFSService] Fetching metadata with availability check: ${uri}`
+    );
+
+    // Extract CID from URI
+    const cid = this.extractCidFromUrl(uri);
+    if (!cid) {
+      // If we can't extract CID, try direct HTTP fetch (might be non-IPFS URL)
+      console.warn(
+        `[IPFSService] Could not extract CID from URI, attempting direct fetch: ${uri}`
+      );
+      const response = await fetch(uri);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch metadata: ${response.status} ${response.statusText}`
+        );
+      }
+      return await response.json();
+    }
+
+    // Check if content is available on the network
+    console.debug(
+      `[IPFSService] Checking availability for metadata CID: ${cid}`
+    );
+    const isAvailable = await this.checkContentAvailability(
+      cid,
+      availabilityTimeoutMs
+    );
+
+    if (!isAvailable) {
       throw new Error(
-        `Failed to fetch metadata: ${response.status} ${response.statusText}`
+        `Metadata not available on IPFS network. No peers found hosting this metadata (CID: ${cid}). The content may have been removed or is temporarily unavailable.`
       );
     }
 
-    const text = await response.text();
-    return JSON.parse(text);
+    console.debug(`[IPFSService] Metadata is available, fetching...`);
+
+    // Fetch metadata using the existing method
+    return await this.fetchMetadata(cid);
+  }
+
+  /**
+   * Check if content is available on the IPFS network
+   * Uses the routing API to find if any peers have the content
+   * Parses NDJSON response looking for Type 4 (Provider) records
+   * Note: Type 1 (PeerResponse) records contain DHT routing info, NOT actual providers
+   * @param cid - Content identifier to check
+   * @param timeoutMs - Timeout in milliseconds (default: 10000ms / 10s)
+   * @returns true if content has providers, false otherwise
+   */
+  async checkContentAvailability(
+    cid: string,
+    timeoutMs: number = 10000
+  ): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      // Use routing findprovs to check if any peers have this content
+      const url = `http://localhost:5001/api/v0/routing/findprovs?arg=${cid}&num-providers=1`;
+      const response = await fetch(url, {
+        method: "POST",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        console.warn(
+          `[IPFSService] Provider check failed: ${response.status} ${response.statusText}`
+        );
+        return false;
+      }
+
+      // Parse NDJSON response (newline-delimited JSON)
+      // QueryEventType values: 0=SendingQuery, 1=PeerResponse, 4=Provider, 7=DialingPeer
+      // IMPORTANT: Only Type 4 indicates actual providers were found
+      // Type 1 Responses array contains peers to query next (DHT routing), NOT providers
+      const text = await response.text();
+
+      if (!text.trim()) {
+        return false;
+      }
+
+      // Split by newlines and parse each JSON object
+      const lines = text.trim().split("\n");
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        try {
+          const record = JSON.parse(line);
+
+          // Type 4 = Provider record (actual provider found)
+          // This is the ONLY reliable indicator that content is available
+          // Verify the provider ID is valid (not empty or undefined)
+          if (record.Type === 4 && record.ID && record.ID.trim().length > 0) {
+            console.debug(
+              `[IPFSService] Found provider for CID ${cid}:`,
+              record.ID
+            );
+            return true;
+          } else if (record.Type === 4) {
+            console.warn(
+              `[IPFSService] Found Type 4 record but provider ID is empty/invalid for CID ${cid}`
+            );
+          }
+        } catch (parseError) {
+          console.warn(
+            "[IPFSService] Failed to parse provider record:",
+            line,
+            parseError
+          );
+          // Continue checking other lines
+        }
+      }
+
+      // No Type 4 provider records found
+      console.debug(`[IPFSService] No providers found for CID ${cid}`);
+      return false;
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        console.warn(
+          `[IPFSService] Provider check timed out after ${timeoutMs}ms`
+        );
+        return false;
+      }
+      console.warn("[IPFSService] Provider check failed:", error);
+      return false;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**
    * Download a file from IPFS using streaming (memory efficient for large files)
    * @param cid - Content identifier for the file
    * @param onChunk - Callback called for each chunk received (chunk, loaded, total)
+   * @param timeoutMs - Optional timeout in milliseconds (default: no timeout)
    * @returns Total bytes downloaded
    */
   async downloadFileStreaming(
     cid: string,
-    onChunk: (chunk: Uint8Array, loaded: number, total: number) => Promise<void>
+    onChunk: (
+      chunk: Uint8Array,
+      loaded: number,
+      total: number
+    ) => Promise<void>,
+    timeoutMs?: number
   ) {
-    const url = `http://localhost:5001/api/v0/cat?arg=${cid}`;
-    const response = await fetch(url, {
-      method: "POST",
-    });
+    const controller = new AbortController();
+    let timeoutId: NodeJS.Timeout | undefined;
 
-    if (!response.ok) {
+    // Only set timeout if explicitly provided
+    if (timeoutMs) {
+      timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    }
+
+    try {
+      const url = `http://localhost:5001/api/v0/cat?arg=${cid}`;
+      const response = await fetch(url, {
+        method: "POST",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to download file: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const contentLength = response.headers.get("content-length") ?? "0";
+      const total = parseInt(contentLength);
+
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+
+      const reader = response.body.getReader();
+      let downloaded = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+        downloaded += value.length;
+
+        await onChunk(value, downloaded, total);
+      }
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        throw new Error(
+          `Download timeout after ${timeoutMs}ms. The file may not be available on the network or the connection is too slow.`
+        );
+      }
+      throw error;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  /**
+   * Download a file with pre-flight availability check
+   * Checks if content is available before attempting download
+   * @param cid - Content identifier for the file
+   * @param onChunk - Callback called for each chunk received
+   * @param availabilityTimeoutMs - Timeout for availability check (default: 10000ms / 10s)
+   * @returns Total bytes downloaded
+   */
+  async downloadWithAvailabilityCheck(
+    cid: string,
+    onChunk: (
+      chunk: Uint8Array,
+      loaded: number,
+      total: number
+    ) => Promise<void>,
+    availabilityTimeoutMs: number = 10000
+  ): Promise<void> {
+    console.debug(
+      `[IPFSService] Checking availability for CID: ${cid} (timeout: ${availabilityTimeoutMs}ms)`
+    );
+
+    // Check if content is available on the network
+    const isAvailable = await this.checkContentAvailability(
+      cid,
+      availabilityTimeoutMs
+    );
+
+    if (!isAvailable) {
       throw new Error(
-        `Failed to download file: ${response.status} ${response.statusText}`
+        `Content not available on IPFS network. No peers found hosting this file (CID: ${cid}). The content may have been removed or is temporarily unavailable.`
       );
     }
 
-    const contentLength = response.headers.get("content-length") ?? "0";
-    const total = parseInt(contentLength);
+    console.debug(
+      `[IPFSService] Content is available, starting download (no timeout - will download until complete)`
+    );
 
-    if (!response.body) {
-      throw new Error("Response body is null");
-    }
-
-    const reader = response.body.getReader();
-    let downloaded = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) break;
-      downloaded += value.length;
-
-      await onChunk(value, downloaded, total);
-    }
+    // Content is available, proceed with download (no timeout)
+    await this.downloadFileStreaming(cid, onChunk);
   }
 
   /**
@@ -247,6 +494,35 @@ export class IPFSService implements FileStorage {
       // Log but don't throw - unpinning failure shouldn't block uninstall
       console.warn("Failed to unpin file from IPFS:", error);
     }
+  }
+
+  /**
+   * Pin multiple files to the local IPFS node
+   * @param cids - Array of content identifiers to pin
+   * @returns Array of results indicating success/failure for each CID
+   */
+  async pinMultipleFiles(cids: string[]): Promise<void> {
+    const results = await Promise.allSettled(
+      cids.map((cid) => this.pinFile(cid))
+    );
+
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length > 0) {
+      console.warn(
+        `[IPFSService] ${failed.length}/${cids.length} files failed to pin`,
+        failed
+      );
+      // Don't throw - partial pinning is acceptable
+    }
+  }
+
+  /**
+   * Unpin multiple files from the local IPFS node
+   * @param cids - Array of content identifiers to unpin
+   */
+  async unpinMultipleFiles(cids: string[]): Promise<void> {
+    await Promise.allSettled(cids.map((cid) => this.unpinFile(cid)));
+    // unpinFile already handles errors gracefully, so we don't need additional error handling
   }
 }
 

@@ -1,4 +1,9 @@
-import type { CreateGameRequest, CreateGameResponse, ApiErrorResponse, GameFilterParams } from './types';
+import type {
+  CreateGameRequest,
+  CreateGameResponse,
+  ApiErrorResponse,
+  GameFilterParams,
+} from "./types";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
@@ -8,7 +13,7 @@ const LAMPORTS_PER_SOL = 1_000_000_000;
 export class GameApiService {
   private readonly baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:3000') {
+  constructor(baseUrl: string = "http://localhost:3000") {
     this.baseUrl = baseUrl;
   }
 
@@ -21,18 +26,18 @@ export class GameApiService {
    */
   async createGame(gameData: CreateGameRequest): Promise<CreateGameResponse> {
     try {
-      console.log('[API] Creating game with data:', gameData);
-      console.log('[API] Price lamports being sent:', gameData.price_lamports);
+      console.log("[API] Creating game with data:", gameData);
+      console.log("[API] Price lamports being sent:", gameData.price_lamports);
 
       const response = await fetch(`${this.baseUrl}/games`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(gameData),
       });
 
-      console.log('[API] Response status:', response.status);
+      console.log("[API] Response status:", response.status);
 
       if (!response.ok) {
         let errorMessage = `Failed to create game: ${response.status} ${response.statusText}`;
@@ -48,14 +53,21 @@ export class GameApiService {
       }
 
       const createdGame: CreateGameResponse = await response.json();
-      console.log('[API] Game created successfully:', createdGame);
-      console.log('[API] Price lamports in response:', createdGame.price_lamports);
+      console.log("[API] Game created successfully:", createdGame);
+      console.log(
+        "[API] Price lamports in response:",
+        createdGame.price_lamports
+      );
       return createdGame;
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`API request failed: ${error.message}`);
+        throw new Error(
+          `Falha ao consultar o indexador, por favor tente utilizar outro indexador ou digite o endereço diretamente.`
+        );
       }
-      throw new Error('API request failed: Unknown error');
+      throw new Error(
+        "Falha ao consultar o indexador, por favor tente utilizar outro indexador ou digite o endereço diretamente."
+      );
     }
   }
 
@@ -69,16 +81,22 @@ export class GameApiService {
       const response = await fetch(`${this.baseUrl}/games`);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch games: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch games: ${response.status} ${response.statusText}`
+        );
       }
 
       const games: CreateGameResponse[] = await response.json();
       return games;
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`API request failed: ${error.message}`);
+        throw new Error(
+          `Falha ao consultar o indexador, por favor tente utilizar outro indexador ou digite o endereço diretamente.`
+        );
       }
-      throw new Error('API request failed: Unknown error');
+      throw new Error(
+        "Falha ao consultar o indexador, por favor tente utilizar outro indexador ou digite o endereço diretamente."
+      );
     }
   }
 
@@ -88,39 +106,46 @@ export class GameApiService {
    * @param query - Search query string
    * @returns Array of matching games
    */
-  async searchGames(query: string, filters?: GameFilterParams): Promise<CreateGameResponse[]> {
+  async searchGames(
+    query: string,
+    filters?: GameFilterParams
+  ): Promise<CreateGameResponse[]> {
     try {
       // Build query parameters
       const params = new URLSearchParams();
 
       // Add name filter (from query parameter)
       if (query) {
-        params.append('q', query);
+        params.append("q", query);
       }
 
       // Add additional filters if provided
       if (filters) {
         // Add name filter from filters object (can override query param)
         if (filters.name) {
-          params.set('q', filters.name);
+          params.set("q", filters.name);
         }
 
         // Add category filters
         if (filters.categories && filters.categories.length > 0) {
-          filters.categories.forEach(category => {
-            params.append('categories', category);
+          filters.categories.forEach((category) => {
+            params.append("categories", category);
           });
         }
 
         // Convert SOL to lamports for price filters
         if (filters.minPrice !== undefined) {
-          const minPriceLamports = Math.floor(filters.minPrice * LAMPORTS_PER_SOL);
-          params.append('min_price', minPriceLamports.toString());
+          const minPriceLamports = Math.floor(
+            filters.minPrice * LAMPORTS_PER_SOL
+          );
+          params.append("min_price", minPriceLamports.toString());
         }
 
         if (filters.maxPrice !== undefined) {
-          const maxPriceLamports = Math.floor(filters.maxPrice * LAMPORTS_PER_SOL);
-          params.append('max_price', maxPriceLamports.toString());
+          const maxPriceLamports = Math.floor(
+            filters.maxPrice * LAMPORTS_PER_SOL
+          );
+          params.append("max_price", maxPriceLamports.toString());
         }
       }
 
@@ -132,17 +157,23 @@ export class GameApiService {
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error(`Failed to search games: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to search games: ${response.status} ${response.statusText}`
+        );
       }
 
       const games: CreateGameResponse[] = await response.json();
       return games;
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`API request failed: ${error.message}`);
+        throw new Error(
+          `Falha ao consultar o indexador, por favor tente utilizar outro indexador ou digite o endereço diretamente.`
+        );
       }
-      throw new Error('API request failed: Unknown error');
     }
+    throw new Error(
+      "Falha ao consultar o indexador, por favor tente utilizar outro indexador ou digite o endereço diretamente."
+    );
   }
 }
 
@@ -161,7 +192,9 @@ class GameApiServiceManager {
 
   updateUrl(url: string): void {
     if (url !== this.currentUrl) {
-      console.debug(`[GameApiServiceManager] Updating API URL from ${this.currentUrl} to ${url}`);
+      console.debug(
+        `[GameApiServiceManager] Updating API URL from ${this.currentUrl} to ${url}`
+      );
       this.currentUrl = url;
       this.service = new GameApiService(url);
     }
@@ -169,7 +202,7 @@ class GameApiServiceManager {
 }
 
 // Export a singleton instance with configuration from environment
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:3000';
+const apiUrl = process.env.VITE_API_URL || "http://localhost:3000";
 const gameApiServiceManager = new GameApiServiceManager(apiUrl);
 
 // Export the service for backward compatibility

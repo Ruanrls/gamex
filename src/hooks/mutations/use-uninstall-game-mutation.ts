@@ -6,24 +6,9 @@ import { remove } from "@tauri-apps/plugin-fs";
 export type UninstallGameVariables = {
   candyMachineAddress: string;
   executableUrl: string;
+  metadataUri: string;
+  imageUrl: string;
   walletAddress: string;
-};
-
-const extractCidFromUrl = (input: string): string => {
-  const patterns = [
-    /ipfs\/([a-zA-Z0-9]+)/,
-    /^(Qm[a-zA-Z0-9]{44}|bafybei[a-z2-7]{52}|bafy[a-z2-7]+)$/,
-    /([a-zA-Z0-9]+)\.ipfs/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = input.match(pattern);
-    if (match) {
-      return match[1] || match[0];
-    }
-  }
-
-  return input.trim();
 };
 
 /**
@@ -37,14 +22,23 @@ export function useUninstallGameMutation() {
     mutationFn: async ({
       candyMachineAddress,
       executableUrl,
+      metadataUri,
+      imageUrl,
     }: UninstallGameVariables): Promise<void> => {
       console.log("=== MUTATION STARTED ===");
       console.log("[useUninstallGameMutation] Uninstalling game:", candyMachineAddress);
       console.log("[useUninstallGameMutation] Executable URL:", executableUrl);
 
-      // Extract CID from executable URL for unpinning
-      const executableCid = extractCidFromUrl(executableUrl);
-      console.log("[useUninstallGameMutation] Executable CID:", executableCid);
+      // Extract CIDs from URLs for unpinning
+      const executableCid = ipfs.extractCidFromUrl(executableUrl);
+      const metadataCid = ipfs.extractCidFromUrl(metadataUri);
+      const imageCid = ipfs.extractCidFromUrl(imageUrl);
+
+      console.log("[useUninstallGameMutation] CIDs to unpin:", {
+        executable: executableCid,
+        metadata: metadataCid,
+        image: imageCid,
+      });
 
       // Delete game directory using filesystem API
       try {
@@ -61,13 +55,23 @@ export function useUninstallGameMutation() {
         throw new Error(`Failed to delete game files: ${error}`);
       }
 
-      // Unpin file from local IPFS node
-      console.log("[useUninstallGameMutation] Unpinning file from local IPFS node:", executableCid);
+      // Unpin files from local IPFS node (executable, metadata, and image)
+      console.log("[useUninstallGameMutation] Unpinning files from local IPFS node");
       try {
-        await ipfs.unpinFile(executableCid);
-        console.log("[useUninstallGameMutation] File unpinned successfully");
+        const cidsToUnpin: string[] = [];
+        if (executableCid) cidsToUnpin.push(executableCid);
+        if (metadataCid) cidsToUnpin.push(metadataCid);
+        if (imageCid) cidsToUnpin.push(imageCid);
+
+        if (cidsToUnpin.length > 0) {
+          console.log(`[useUninstallGameMutation] Unpinning ${cidsToUnpin.length} files`);
+          await ipfs.unpinMultipleFiles(cidsToUnpin);
+          console.log("[useUninstallGameMutation] Files unpinned successfully");
+        } else {
+          console.warn("[useUninstallGameMutation] No valid CIDs found for unpinning");
+        }
       } catch (error) {
-        console.warn("[useUninstallGameMutation] Failed to unpin file, but uninstall succeeded:", error);
+        console.warn("[useUninstallGameMutation] Failed to unpin some files, but uninstall succeeded:", error);
         // Don't throw - unpinning failure shouldn't block the uninstall
       }
 

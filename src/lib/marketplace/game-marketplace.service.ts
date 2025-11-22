@@ -11,6 +11,7 @@ export type MarketplaceGame = {
   price: number;
   itemsAvailable: number;
   canPurchase: boolean;
+  metadataUri: string;
 };
 
 export type PurchaseResult = {
@@ -79,6 +80,7 @@ export class GameMarketplaceService {
         price: price,
         itemsAvailable: candyMachine.getItemsAvailable(),
         canPurchase: candyMachine.canMint(),
+        metadataUri: collection.uri,
       };
     } catch (error) {
       console.error(
