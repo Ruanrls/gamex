@@ -238,6 +238,7 @@ function RouteComponent() {
               key={game.assetPublicKey}
               title={game.metadata.name}
               imageUrl={getLocalImageUrl(game.metadata.image)}
+              categories={game.metadata.categories}
               isInstalled={game.isInstalled}
               onLaunch={() => handleLaunchGame(game)}
               onDownload={() => handleDownloadGame(game)}

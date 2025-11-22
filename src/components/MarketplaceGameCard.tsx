@@ -1,6 +1,7 @@
 import { ShoppingCart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { lamportsToSol } from "@/lib/blockchain/utils/currency";
 import type { CreateGameResponse } from "@/lib/api/types";
 import { TARGET_TRIPLES, getPlatformFamilies } from "@/lib/platform";
@@ -41,7 +42,8 @@ export function MarketplaceGameCard({
 
   // Convert lamports to SOL and format
   const priceInSol = lamportsToSol(game.price_lamports);
-  const formattedPrice = priceInSol === 0 ? "Grátis" : `${priceInSol.toFixed(2)} SOL`;
+  const formattedPrice =
+    priceInSol === 0 ? "Grátis" : `${priceInSol.toFixed(2)} SOL`;
 
   // Extract platform families from executables array
   const platforms = game.executables?.map((exec) => exec.platform) || [];
@@ -49,9 +51,12 @@ export function MarketplaceGameCard({
   const platformIcons = platformFamilies.map((family) => {
     // Get any triple of this family to get the icon
     const triple = Object.keys(TARGET_TRIPLES).find(
-      (t) => TARGET_TRIPLES[t as keyof typeof TARGET_TRIPLES].platform === family
+      (t) =>
+        TARGET_TRIPLES[t as keyof typeof TARGET_TRIPLES].platform === family
     );
-    return triple ? TARGET_TRIPLES[triple as keyof typeof TARGET_TRIPLES].icon : "";
+    return triple
+      ? TARGET_TRIPLES[triple as keyof typeof TARGET_TRIPLES].icon
+      : "";
   });
 
   return (
@@ -86,6 +91,27 @@ export function MarketplaceGameCard({
               {icon}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Categories */}
+      {game.categories && game.categories.length > 0 && (
+        <div className="absolute bottom-20 left-0 right-0 px-4">
+          <div className="flex flex-wrap justify-center gap-1.5 py-2 rounded-lg">
+            {game.categories.slice(0, 2).map((category) => (
+              <Badge key={category} className="text-xs font-semibold shadow-lg">
+                {category}
+              </Badge>
+            ))}
+            {game.categories.length > 2 && (
+              <Badge
+                variant="secondary"
+                className="text-xs font-semibold shadow-lg"
+              >
+                +{game.categories.length - 2}
+              </Badge>
+            )}
+          </div>
         </div>
       )}
 

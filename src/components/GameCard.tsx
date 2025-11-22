@@ -1,9 +1,11 @@
 import { Download, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 export type GameCardProps = {
   title: string;
   imageUrl: string;
+  categories?: string[];
   isInstalled: boolean;
   onLaunch: () => void;
   onDownload: () => void;
@@ -13,6 +15,7 @@ export type GameCardProps = {
 export function GameCard({
   title,
   imageUrl,
+  categories = [],
   isInstalled,
   onLaunch,
   onDownload,
@@ -46,7 +49,8 @@ export function GameCard({
           onError={(e) => {
             // Fallback for broken images
             const target = e.target as HTMLImageElement;
-            target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533' viewBox='0 0 400 533'%3E%3Crect fill='%23374151' width='400' height='533'/%3E%3C/svg%3E";
+            target.src =
+              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='533' viewBox='0 0 400 533'%3E%3Crect fill='%23374151' width='400' height='533'/%3E%3C/svg%3E";
           }}
         />
       </div>
@@ -80,6 +84,27 @@ export function GameCard({
           </div>
         )}
       </div>
+
+      {/* Categories */}
+      {categories.length > 0 && (
+        <div className="absolute bottom-8 left-0 right-0 px-3">
+          <div className="flex flex-wrap justify-center gap-1 py-1.5 rounded-lg">
+            {categories.slice(0, 2).map((category) => (
+              <Badge key={category} className="text-xs font-semibold shadow-md">
+                {category}
+              </Badge>
+            ))}
+            {categories.length > 2 && (
+              <Badge
+                variant="secondary"
+                className="text-xs font-semibold shadow-md"
+              >
+                +{categories.length - 2}
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Title Bar at Bottom */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent px-4 py-3">

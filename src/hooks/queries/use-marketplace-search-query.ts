@@ -3,7 +3,7 @@ import { gameApiService } from "@/lib/api/game-api.service";
 import { CollectionRepository } from "@/lib/blockchain/domain/repositories/collection.repository";
 import { isSolanaAddress } from "@/lib/utils/solana-validation";
 import type { CreateGameResponse } from "@/lib/api/types";
-import { isOption, isSome, some } from "@metaplex-foundation/umi";
+import { isSome } from "@metaplex-foundation/umi";
 
 export type UseMarketplaceSearchQueryOptions = {
   query: string;
@@ -37,13 +37,6 @@ export function useMarketplaceSearchQuery({
         return [];
       }
 
-      console.debug(
-        "[useMarketplaceSearchQuery] Searching for:",
-        trimmedQuery,
-        "isAddress:",
-        isAddress
-      );
-
       // Strategy 1: Candy Machine Address Search
       if (isAddress) {
         try {
@@ -52,31 +45,9 @@ export function useMarketplaceSearchQuery({
           const { metadata, collection, candyMachine, guard } =
             await collectionRepo.findByCandyMachineAddress(trimmedQuery);
 
-          console.debug(
-            "[useMarketplaceSearchQuery] Collection found on blockchain:",
-            collection.name
-          );
-
           const solPaymentGuard = isSome(guard.guards.solPayment)
             ? Number(guard.guards.solPayment.value.lamports.basisPoints)
             : 0;
-
-          console.log(
-            "[useMarketplaceSearchQuery] Sol payment guard:",
-            solPaymentGuard
-          );
-          console.log(
-            "[useMarketplaceSearchQuery] Sol payment guard:",
-            isOption(guard.guards.solFixedFee)
-          );
-          console.log(
-            "[useMarketplaceSearchQuery] Sol payment guard:",
-            isSome(guard.guards.solFixedFee)
-          );
-          console.log(
-            "[useMarketplaceSearchQuery] Sol payment guard:",
-            guard.guards
-          );
 
           return [
             {
@@ -88,15 +59,12 @@ export function useMarketplaceSearchQuery({
               collection_address: collection.publicKey.toString(),
               metadata_uri: collection.uri,
               created_at: new Date().toISOString(), // Creation date unknown from blockchain query
+              categories: metadata.categories,
               executables: metadata.executables,
               creator: candyMachine.authority.toString(),
             },
           ];
         } catch (error) {
-          console.error(
-            "[useMarketplaceSearchQuery] Error fetching collection:",
-            error
-          );
           // If blockchain query fails, try backend search as fallback
           const games = await gameApiService.searchGames(trimmedQuery);
           return games;
@@ -104,14 +72,7 @@ export function useMarketplaceSearchQuery({
       }
 
       // Strategy 2: Game Name Search
-      console.debug(
-        "[useMarketplaceSearchQuery] Searching by name:",
-        trimmedQuery
-      );
       const games = await gameApiService.searchGames(trimmedQuery);
-
-      console.debug("[useMarketplaceSearchQuery] Games found:", games.length);
-
       return games;
     },
     enabled: enabled && trimmedQuery.length > 0,

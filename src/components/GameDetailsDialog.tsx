@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Copy, Calendar, User } from "lucide-react";
 import { formatDate } from "@/lib/utils/date-format";
 import { lamportsToSol } from "@/lib/blockchain/utils/currency";
@@ -129,6 +130,22 @@ export function GameDetailsDialog({
               {game.description}
             </p>
           </div>
+
+          {/* Categories */}
+          {game.categories && game.categories.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-semibold text-gray-300">
+                Categorias
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {game.categories.map((category) => (
+                  <Badge key={category} className="px-3 py-1.5 text-sm">
+                    {category}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Metadata Grid */}
           <div className="grid gap-3 sm:grid-cols-2">

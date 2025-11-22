@@ -30,6 +30,7 @@ import {
 } from "@/lib/platform";
 import { GAME_CATEGORIES } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 const MAX_IMAGE_SIZE = 5000000; // 5MB
 const MAX_EXECUTABLE_SIZE = 100000000; // 100MB
@@ -108,6 +109,7 @@ export function GameForm({ onSubmit }: GameFormProps) {
   // Watch form values for live preview
   const watchedName = form.watch("name");
   const watchedPrice = form.watch("price");
+  const watchedCategories = form.watch("categories");
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -531,6 +533,24 @@ export function GameForm({ onSubmit }: GameFormProps) {
                       {icon}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Categories */}
+              {watchedCategories && watchedCategories.length > 0 && (
+                <div className="absolute bottom-20 left-0 right-0 px-4">
+                  <div className="flex flex-wrap justify-center gap-1.5 bg-black/40 backdrop-blur-sm py-2 rounded-lg">
+                    {watchedCategories.slice(0, 3).map((category) => (
+                      <Badge key={category} className="text-xs font-semibold shadow-lg">
+                        {category}
+                      </Badge>
+                    ))}
+                    {watchedCategories.length > 3 && (
+                      <Badge variant="secondary" className="text-xs font-semibold shadow-lg">
+                        +{watchedCategories.length - 3}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               )}
 
