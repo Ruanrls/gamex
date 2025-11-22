@@ -101,7 +101,7 @@ function RouteComponent() {
       );
 
       if (!isOwner) {
-        alert("You no longer own this game. Unable to launch.");
+        alert("Você não possui mais este jogo. Não é possível iniciá-lo.");
         // Refresh library to update UI
         await refetch();
         return;
@@ -124,7 +124,7 @@ function RouteComponent() {
       console.log("Game launched:", result);
     } catch (err) {
       console.error("Error launching game:", err);
-      alert(`Failed to launch game: ${err}`);
+      alert(`Falha ao iniciar o jogo: ${err}`);
     }
   };
 
@@ -145,7 +145,7 @@ function RouteComponent() {
       },
       onError: (err) => {
         console.error("Error downloading game:", err);
-        alert(`Failed to download game: ${err}`);
+        alert(`Falha ao baixar o jogo: ${err}`);
       },
     });
   };
@@ -165,7 +165,7 @@ function RouteComponent() {
       );
 
       if (!executable) {
-        alert("Could not find executable for uninstallation");
+        alert("Não foi possível encontrar o executável para desinstalar");
         setGameToUninstall(null);
         return;
       }
@@ -181,13 +181,13 @@ function RouteComponent() {
         },
         onError: (err) => {
           console.error("Error uninstalling game:", err);
-          alert(`Failed to uninstall game: ${err}`);
+          alert(`Falha ao desinstalar o jogo: ${err}`);
           setGameToUninstall(null);
         },
       });
     } catch (err) {
       console.error("Error during uninstallation:", err);
-      alert(`Failed to uninstall game: ${err}`);
+      alert(`Falha ao desinstalar o jogo: ${err}`);
       setGameToUninstall(null);
     }
   };
@@ -201,17 +201,17 @@ function RouteComponent() {
       <Dialog open={!!gameToUninstall} onOpenChange={(open) => !open && setGameToUninstall(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Uninstall Game</DialogTitle>
+            <DialogTitle>Desinstalar Jogo</DialogTitle>
             <DialogDescription>
-              Are you sure you want to uninstall "{gameToUninstall?.metadata.name}"? This will delete the game files from your computer.
+              Tem certeza que deseja desinstalar "{gameToUninstall?.metadata.name}"? Isso irá deletar os arquivos do jogo do seu computador.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGameToUninstall(null)}>
-              Cancel
+              Cancelar
             </Button>
             <Button variant="destructive" onClick={confirmUninstall}>
-              Uninstall
+              Desinstalar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -219,9 +219,9 @@ function RouteComponent() {
 
       <div className="container mx-auto px-4 py-10">
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-white">Game Library</h1>
+          <h1 className="mb-2 text-3xl font-bold text-white">Biblioteca de Jogos</h1>
           <p className="text-gray-400">
-            Your collection of games on the blockchain
+            Sua coleção de jogos na blockchain
           </p>
         </div>
 
@@ -253,22 +253,22 @@ function RouteComponent() {
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="text-center">
             <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-white" />
-            <p className="text-gray-400">Loading your game library...</p>
+            <p className="text-gray-400">Carregando sua biblioteca de jogos...</p>
           </div>
         </div>
       ) : error ? (
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="text-center">
-            <p className="mb-4 text-red-400">{error.message || "Failed to load your game library"}</p>
-            <Button onClick={() => refetch()}>Try Again</Button>
+            <p className="mb-4 text-red-400">{error.message || "Falha ao carregar sua biblioteca de jogos"}</p>
+            <Button onClick={() => refetch()}>Tentar Novamente</Button>
           </div>
         </div>
       ) : games.length === 0 ? (
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="text-center">
-            <p className="mb-2 text-xl text-gray-300">No games in your library</p>
+            <p className="mb-2 text-xl text-gray-300">Nenhum jogo na sua biblioteca</p>
             <p className="text-gray-500">
-              Browse the marketplace to add games to your collection
+              Navegue no marketplace para adicionar jogos à sua coleção
             </p>
           </div>
         </div>
