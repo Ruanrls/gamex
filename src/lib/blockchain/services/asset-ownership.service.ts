@@ -77,18 +77,9 @@ export class AssetOwnershipService {
         `[AssetOwnershipService:getUserOwnedGames] Found ${assets.length} total assets`
       );
 
-      // Filter for game assets by checking if metadata exists and contains game-specific fields
-      const gameAssets = assets.filter((asset) => {
-        // Check if the asset has a URI (points to metadata)
-        // Game assets should have collection and metadata
-        return asset.uri && asset.uri.length > 0;
-      });
-
-      console.debug(
-        `[AssetOwnershipService:getUserOwnedGames] Filtered to ${gameAssets.length} game assets`
-      );
-
-      return gameAssets;
+      // Return all assets - filtering happens in GameLibraryService
+      // when it validates metadata using GameMetadataVO.create()
+      return assets;
     } catch (error) {
       console.error(
         `[AssetOwnershipService:getUserOwnedGames] Error fetching user owned games:`,

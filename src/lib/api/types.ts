@@ -16,6 +16,7 @@ export interface CreateGameRequest {
   name: string;
   description: string;
   image_url: string;
+  categories: string[];
   executables: GameExecutable[];
   creator: string;
   metadata_uri: string;
@@ -31,6 +32,7 @@ export interface CreateGameResponse {
   name: string;
   description: string;
   image_url: string;
+  categories: string[];
   executables: GameExecutable[];
   creator: string;
   metadata_uri: string;

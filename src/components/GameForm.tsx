@@ -28,6 +28,7 @@ import {
   getPlatformFamilies,
   type TargetTriple,
 } from "@/lib/platform";
+import { GAME_CATEGORIES } from "@/lib/blockchain/domain/value-objects/game-metadata.vo";
 import { cn } from "@/lib/utils";
 
 const MAX_IMAGE_SIZE = 5000000; // 5MB
@@ -54,6 +55,10 @@ const gameFormSchema = z.object({
     .string()
     .min(1, "Descrição é obrigatória")
     .max(500, "Descrição muito longa"),
+  categories: z
+    .array(z.string())
+    .min(1, "Selecione pelo menos uma categoria")
+    .max(5, "Máximo de 5 categorias permitidas"),
   price: z
     .number({ invalid_type_error: "Preço deve ser um número" })
     .min(0, "Preço deve ser no mínimo 0 SOL")
@@ -95,6 +100,7 @@ export function GameForm({ onSubmit }: GameFormProps) {
     defaultValues: {
       name: "",
       description: "",
+      categories: [],
       price: 0,
     },
   });
@@ -240,6 +246,69 @@ export function GameForm({ onSubmit }: GameFormProps) {
                   </FormControl>
                   <FormDescription>
                     Uma breve descrição do seu jogo (10-500 caracteres)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="categories"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categorias</FormLabel>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <Select
+                        onValueChange={(value) => {
+                          if (!field.value.includes(value) && field.value.length < 5) {
+                            field.onChange([...field.value, value]);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione as categorias do jogo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GAME_CATEGORIES.map((category) => (
+                            <SelectItem
+                              key={category}
+                              value={category}
+                              disabled={field.value.includes(category)}
+                            >
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {field.value.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {field.value.map((category) => (
+                            <div
+                              key={category}
+                              className="flex items-center gap-1 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm"
+                            >
+                              <span>{category}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  field.onChange(
+                                    field.value.filter((c) => c !== category)
+                                  );
+                                }}
+                                className="hover:bg-primary/20 rounded-full p-0.5"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Selecione de 1 a 5 categorias que descrevem seu jogo
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

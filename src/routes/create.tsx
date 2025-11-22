@@ -74,6 +74,7 @@ function RouteComponent() {
         name: values.name,
         description: values.description,
         image: ipfs.getGatewayUrl(imageResult.id),
+        categories: values.categories,
         executables,
       });
 
@@ -103,6 +104,7 @@ function RouteComponent() {
         name: values.name,
         description: values.description,
         image_url: metadata.image,
+        categories: metadata.categories,
         executables: metadata.executables,
         creator: wallet.address,
         metadata_uri: metadataUri,
