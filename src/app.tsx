@@ -2,6 +2,7 @@ import "./App.css";
 import { use } from "react";
 import { userContext, UserProvider } from "./providers/user.provider";
 import { SettingsProvider } from "./providers/settings.provider";
+import { FavoritesProvider } from "./providers/favorites.provider";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { Toaster } from "./components/ui/sonner";
@@ -37,8 +38,10 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
         <UserProvider>
-          <InnerApp />
-          <Toaster />
+          <FavoritesProvider>
+            <InnerApp />
+            <Toaster />
+          </FavoritesProvider>
         </UserProvider>
       </SettingsProvider>
       <ReactQueryDevtools initialIsOpen={false} />

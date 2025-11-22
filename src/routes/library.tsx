@@ -21,6 +21,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FavoritesBar } from "@/components/FavoritesBar";
+import { AddFavoriteDialog } from "@/components/AddFavoriteDialog";
 
 export const Route = createFileRoute("/library")({
   component: RouteComponent,
@@ -51,6 +53,7 @@ function RouteComponent() {
   const uninstallGameMutation = useUninstallGameMutation();
   const [gameToUninstall, setGameToUninstall] = useState<LibraryGame | null>(null);
   const [activeTab, setActiveTab] = useState<LibraryTab>("all");
+  const [showAddFavoriteDialog, setShowAddFavoriteDialog] = useState(false);
 
   // Filter games based on active tab
   const filteredGames = useMemo(() => {
@@ -217,6 +220,13 @@ function RouteComponent() {
         </DialogContent>
       </Dialog>
 
+      <AddFavoriteDialog
+        open={showAddFavoriteDialog}
+        onOpenChange={setShowAddFavoriteDialog}
+        games={games}
+        getImageUrl={getLocalImageUrl}
+      />
+
       <div className="container mx-auto px-4 py-10">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold text-white">Biblioteca de Jogos</h1>
@@ -224,6 +234,17 @@ function RouteComponent() {
             Sua coleção de jogos na blockchain
           </p>
         </div>
+
+        {/* Favorites Bar */}
+        {games.length > 0 && (
+          <FavoritesBar
+            games={games}
+            onLaunchGame={handleLaunchGame}
+            onDownloadGame={handleDownloadGame}
+            getImageUrl={getLocalImageUrl}
+            onAddClick={() => setShowAddFavoriteDialog(true)}
+          />
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LibraryTab)} className="mb-6">
