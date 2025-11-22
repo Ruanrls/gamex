@@ -55,11 +55,11 @@ export function AddFavoriteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Add to Favorites</DialogTitle>
+          <DialogTitle>Adicionar aos Favoritos</DialogTitle>
           <DialogDescription>
             {canAddMore()
-              ? "Select a game to add to your favorites (max 5)"
-              : "You have reached the maximum number of favorites (5)"}
+              ? "Selecione um jogo para adicionar aos seus favoritos (máximo 5)"
+              : "Você atingiu o número máximo de favoritos (5)"}
           </DialogDescription>
         </DialogHeader>
 
@@ -70,7 +70,7 @@ export function AddFavoriteDialog({
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
               <Input
                 type="text"
-                placeholder="Search games..."
+                placeholder="Buscar jogos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -83,8 +83,8 @@ export function AddFavoriteDialog({
                 <div className="flex min-h-[200px] items-center justify-center">
                   <p className="text-neutral-500">
                     {searchQuery
-                      ? "No games found matching your search"
-                      : "All your games are already in favorites"}
+                      ? "Nenhum jogo encontrado"
+                      : "Todos os seus jogos já estão nos favoritos"}
                   </p>
                 </div>
               ) : (
@@ -93,7 +93,7 @@ export function AddFavoriteDialog({
                     <button
                       key={game.candyMachinePublicKey}
                       onClick={() => handleAddFavorite(game)}
-                      className="group relative overflow-hidden rounded-lg transition-all hover:scale-105"
+                      className="group relative overflow-hidden rounded-lg transition-all"
                     >
                       {/* Game Image with 3:4 aspect ratio */}
                       <div className="aspect-[3/4] overflow-hidden rounded-lg">
@@ -116,9 +116,9 @@ export function AddFavoriteDialog({
 
                       {/* Installed Badge */}
                       {game.isInstalled && (
-                        <div className="absolute left-2 top-2">
+                        <div className="absolute left-1/2 top-2 -translate-x-1/2">
                           <Badge variant="secondary" className="text-xs">
-                            Installed
+                            Instalado
                           </Badge>
                         </div>
                       )}

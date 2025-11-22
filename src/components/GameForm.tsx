@@ -264,7 +264,10 @@ export function GameForm({ onSubmit }: GameFormProps) {
                     <div className="space-y-2">
                       <Select
                         onValueChange={(value) => {
-                          if (!field.value.includes(value) && field.value.length < 5) {
+                          if (
+                            !field.value.includes(value) &&
+                            field.value.length < 5
+                          ) {
                             field.onChange([...field.value, value]);
                           }
                         }}
@@ -538,15 +541,21 @@ export function GameForm({ onSubmit }: GameFormProps) {
 
               {/* Categories */}
               {watchedCategories && watchedCategories.length > 0 && (
-                <div className="absolute bottom-20 left-0 right-0 px-4">
-                  <div className="flex flex-wrap justify-center gap-1.5 bg-black/40 backdrop-blur-sm py-2 rounded-lg">
+                <div className="absolute bottom-23 left-0 right-0 px-4">
+                  <div className="flex flex-wrap justify-center gap-1.5 py-2 rounded-lg">
                     {watchedCategories.slice(0, 3).map((category) => (
-                      <Badge key={category} className="text-xs font-semibold shadow-lg">
+                      <Badge
+                        key={category}
+                        className="text-xs font-semibold shadow-lg"
+                      >
                         {category}
                       </Badge>
                     ))}
                     {watchedCategories.length > 3 && (
-                      <Badge variant="secondary" className="text-xs font-semibold shadow-lg">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-semibold shadow-lg"
+                      >
                         +{watchedCategories.length - 3}
                       </Badge>
                     )}

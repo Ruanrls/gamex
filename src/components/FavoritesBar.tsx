@@ -79,9 +79,9 @@ export function FavoritesBar({
         </DialogContent>
       </Dialog>
 
-      <div className="mb-6 flex items-center gap-3 rounded-2xl bg-neutral-800/50 p-3">
+      <div className="mb-6 flex items-center gap-2 rounded-xl bg-neutral-800/50 p-2">
         {/* Favorites Label */}
-        <h2 className="text-base font-medium text-neutral-200">Favorites</h2>
+        <h2 className="text-sm font-medium text-neutral-200">Favoritos</h2>
 
         {/* Favorite Games */}
         <div className="flex flex-1 items-center gap-2">
@@ -94,7 +94,7 @@ export function FavoritesBar({
               onClick={() => handleGameClick(game)}
             >
               {/* Game Image */}
-              <div className="h-12 w-12 overflow-hidden rounded-lg transition-all hover:scale-105 hover:brightness-110">
+              <div className="h-10 w-10 overflow-hidden rounded-md transition-all hover:brightness-110">
                 <img
                   src={getImageUrl(game.metadata.image)}
                   alt={game.metadata.name}
@@ -122,8 +122,8 @@ export function FavoritesBar({
 
           {/* Empty state placeholders */}
           {favoriteGames.length === 0 && (
-            <p className="text-sm text-neutral-500">
-              No favorites yet. Click + to add games
+            <p className="text-xs text-neutral-500">
+              Nenhum favorito ainda. Clique em + para adicionar jogos
             </p>
           )}
         </div>
@@ -132,14 +132,14 @@ export function FavoritesBar({
         <button
           onClick={onAddClick}
           disabled={!canAddMore()}
-          className={`flex h-12 w-12 items-center justify-center rounded-lg border-2 border-dashed transition-all ${
+          className={`flex h-10 w-10 items-center justify-center rounded-md border-2 border-dashed transition-all ${
             canAddMore()
               ? "border-neutral-600 hover:border-pink-500 hover:text-pink-500"
               : "cursor-not-allowed border-neutral-700 text-neutral-700"
           }`}
           aria-label="Add favorite"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4" />
         </button>
       </div>
     </>
