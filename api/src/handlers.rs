@@ -12,7 +12,10 @@ use crate::models::{CreateGameRequest, Game};
 
 #[derive(Deserialize)]
 pub struct SearchQuery {
-    q: String,
+    pub q: Option<String>,
+    pub categories: Option<Vec<String>>,
+    pub min_price: Option<i64>,
+    pub max_price: Option<i64>,
 }
 
 pub async fn create_game(
@@ -86,15 +89,56 @@ pub async fn search_games(
 ) -> impl IntoResponse {
     let collection = db.collection::<Game>("games");
 
-    // Create case-insensitive regex filter for partial name matching
-    let filter = doc! {
-        "name": {
-            "$regex": params.q,
-            "$options": "i"
+    // Build filter document with $and operator
+    let mut filters = Vec::new();
+
+    // Add name filter if provided
+    if let Some(q) = params.q {
+        if !q.is_empty() {
+            filters.push(doc! {
+                "name": {
+                    "$regex": q,
+                    "$options": "i"
+                }
+            });
+        }
+    }
+
+    // Add categories filter if provided (game must have ALL selected categories)
+    if let Some(categories) = params.categories {
+        if !categories.is_empty() {
+            filters.push(doc! {
+                "categories": {
+                    "$all": categories
+                }
+            });
+        }
+    }
+
+    // Add price range filter
+    let mut price_filter = doc! {};
+    if let Some(min_price) = params.min_price {
+        price_filter.insert("$gte", min_price);
+    }
+    if let Some(max_price) = params.max_price {
+        price_filter.insert("$lte", max_price);
+    }
+    if !price_filter.is_empty() {
+        filters.push(doc! {
+            "price_lamports": price_filter
+        });
+    }
+
+    // Combine all filters with $and, or use empty filter if no filters provided
+    let final_filter = if filters.is_empty() {
+        doc! {}
+    } else {
+        doc! {
+            "$and": filters
         }
     };
 
-    match collection.find(filter).await {
+    match collection.find(final_filter).await {
         Ok(mut cursor) => {
             let mut games = Vec::new();
 

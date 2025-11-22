@@ -8,6 +8,7 @@ import { useUser } from "@/providers/user.provider";
 import { useState, useMemo } from "react";
 import { MarketplaceGameCard } from "@/components/MarketplaceGameCard";
 import { GameDetailsDialog } from "@/components/GameDetailsDialog";
+import { MarketplaceFilters } from "@/components/MarketplaceFilters";
 import { Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import { useMarketplaceSearchQuery } from "@/hooks/queries/use-marketplace-searc
 import { usePurchaseGameMutation } from "@/hooks/mutations/use-purchase-game-mutation";
 import { useDownloadGameMutation } from "@/hooks/mutations/use-download-game-mutation";
 import { useDebounce } from "@/hooks/use-debounce";
-import type { CreateGameResponse } from "@/lib/api/types";
+import type { CreateGameResponse, GameFilterParams } from "@/lib/api/types";
 
 export const Route = createFileRoute("/marketplace")({
   component: RouteComponent,
@@ -51,9 +52,13 @@ function RouteComponent() {
     null
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<GameFilterParams>({});
 
   // Debounce search query to avoid excessive API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Debounce filters to avoid excessive API calls
+  const debouncedFilters = useDebounce(filters, 300);
 
   // Fetch all games when not searching
   const {
@@ -62,24 +67,38 @@ function RouteComponent() {
     error: errorAll,
   } = useAllMarketplaceGamesQuery();
 
-  // Search games when query is present
+  // Check if any filters are active
+  const hasActiveFilters =
+    (debouncedFilters.categories && debouncedFilters.categories.length > 0) ||
+    debouncedFilters.minPrice !== undefined ||
+    debouncedFilters.maxPrice !== undefined;
+
+  // Search games when query or filters are present
   const {
     data: searchResults = [],
     isLoading: isSearching,
     error: searchError,
   } = useMarketplaceSearchQuery({
     query: debouncedSearchQuery,
-    enabled: debouncedSearchQuery.length > 0,
+    filters: debouncedFilters,
+    enabled: debouncedSearchQuery.length > 0 || hasActiveFilters,
   });
 
   // Determine which data to display
   const games = useMemo(() => {
-    return debouncedSearchQuery.length > 0 ? searchResults : allGames;
-  }, [debouncedSearchQuery, searchResults, allGames]);
+    return debouncedSearchQuery.length > 0 || hasActiveFilters
+      ? searchResults
+      : allGames;
+  }, [debouncedSearchQuery, hasActiveFilters, searchResults, allGames]);
 
   const isLoading =
-    debouncedSearchQuery.length > 0 ? isSearching : isLoadingAll;
-  const error = debouncedSearchQuery.length > 0 ? searchError : errorAll;
+    debouncedSearchQuery.length > 0 || hasActiveFilters
+      ? isSearching
+      : isLoadingAll;
+  const error =
+    debouncedSearchQuery.length > 0 || hasActiveFilters
+      ? searchError
+      : errorAll;
 
   const purchaseGameMutation = usePurchaseGameMutation();
   const downloadGameMutation = useDownloadGameMutation();
@@ -157,6 +176,10 @@ function RouteComponent() {
     navigate({ to: "/library" });
   };
 
+  const handleClearFilters = () => {
+    setFilters({});
+  };
+
   if (!wallet) {
     return null;
   }
@@ -168,86 +191,100 @@ function RouteComponent() {
         <p className="text-gray-400">Encontre e compre jogos na blockchain</p>
       </div>
 
-      {/* Search Input */}
-      <div className="mb-6">
-        <div className="relative max-w-2xl">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Buscar por nome ou endereço da coleção"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-10 bg-neutral-800 border-neutral-700 text-white placeholder:text-gray-500 focus:border-pink-600 focus:ring-pink-600"
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Sidebar - Filters */}
+        <aside className="lg:sticky lg:top-4 lg:self-start">
+          <MarketplaceFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            onClearFilters={handleClearFilters}
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-              aria-label="Limpar busca"
-            >
-              <X className="h-5 w-5" />
-            </button>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1">
+          {/* Search Input */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar por nome ou endereço da coleção"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 bg-neutral-800 border-neutral-700 text-white placeholder:text-gray-500 focus:border-pink-600 focus:ring-pink-600"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  aria-label="Limpar busca"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            {(debouncedSearchQuery || hasActiveFilters) && (
+              <p className="mt-2 text-sm text-gray-400">
+                {isSearching
+                  ? "Buscando..."
+                  : `${games.length} resultado${
+                      games.length !== 1 ? "s" : ""
+                    } encontrado${games.length !== 1 ? "s" : ""}`}
+              </p>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-white" />
+                <p className="text-gray-400">Carregando jogos...</p>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <div className="text-center">
+                <p className="mb-4 text-red-400">
+                  {error.message || "Erro ao carregar jogos"}
+                </p>
+                <Button onClick={() => window.location.reload()}>
+                  Tentar Novamente
+                </Button>
+              </div>
+            </div>
+          ) : games.length === 0 ? (
+            <div className="flex min-h-[400px] items-center justify-center">
+              <div className="text-center">
+                <p className="mb-2 text-xl text-gray-300">
+                  {debouncedSearchQuery || hasActiveFilters
+                    ? "Nenhum jogo encontrado"
+                    : "Nenhum jogo disponível"}
+                </p>
+                <p className="text-gray-500">
+                  {debouncedSearchQuery || hasActiveFilters
+                    ? "Tente ajustar os filtros ou buscar por outro termo"
+                    : "Seja o primeiro a publicar um jogo!"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+              {games.map((game) => (
+                <MarketplaceGameCard
+                  key={game.collection_address}
+                  game={game}
+                  onCardClick={handleCardClick}
+                  isLoading={
+                    purchaseGameMutation.isPending &&
+                    selectedGame?.collection_address === game.collection_address
+                  }
+                />
+              ))}
+            </div>
           )}
         </div>
-        {debouncedSearchQuery && (
-          <p className="mt-2 text-sm text-gray-400">
-            {isSearching
-              ? "Buscando..."
-              : `${games.length} resultado${
-                  games.length !== 1 ? "s" : ""
-                } encontrado${games.length !== 1 ? "s" : ""}`}
-          </p>
-        )}
       </div>
-
-      {isLoading ? (
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-white" />
-            <p className="text-gray-400">Carregando jogos...</p>
-          </div>
-        </div>
-      ) : error ? (
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <p className="mb-4 text-red-400">
-              {error.message || "Erro ao carregar jogos"}
-            </p>
-            <Button onClick={() => window.location.reload()}>
-              Tentar Novamente
-            </Button>
-          </div>
-        </div>
-      ) : games.length === 0 ? (
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <p className="mb-2 text-xl text-gray-300">
-              {debouncedSearchQuery
-                ? "Nenhum jogo encontrado"
-                : "Nenhum jogo disponível"}
-            </p>
-            <p className="text-gray-500">
-              {debouncedSearchQuery
-                ? "Tente buscar por outro nome ou endereço de coleção"
-                : "Seja o primeiro a publicar um jogo!"}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {games.map((game) => (
-            <MarketplaceGameCard
-              key={game.collection_address}
-              game={game}
-              onCardClick={handleCardClick}
-              isLoading={
-                purchaseGameMutation.isPending &&
-                selectedGame?.collection_address === game.collection_address
-              }
-            />
-          ))}
-        </div>
-      )}
 
       {/* Success Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>

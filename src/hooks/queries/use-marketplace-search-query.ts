@@ -2,11 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { gameApiService } from "@/lib/api/game-api.service";
 import { CollectionRepository } from "@/lib/blockchain/domain/repositories/collection.repository";
 import { isSolanaAddress } from "@/lib/utils/solana-validation";
-import type { CreateGameResponse } from "@/lib/api/types";
+import type { CreateGameResponse, GameFilterParams } from "@/lib/api/types";
 import { isSome } from "@metaplex-foundation/umi";
 
 export type UseMarketplaceSearchQueryOptions = {
   query: string;
+  filters?: GameFilterParams;
   enabled?: boolean;
 };
 
@@ -25,20 +26,22 @@ export type UseMarketplaceSearchQueryOptions = {
  */
 export function useMarketplaceSearchQuery({
   query,
+  filters,
   enabled = true,
 }: UseMarketplaceSearchQueryOptions) {
   const trimmedQuery = query?.trim() || "";
   const isAddress = isSolanaAddress(trimmedQuery);
 
   return useQuery({
-    queryKey: ["marketplace-search", trimmedQuery, isAddress],
+    queryKey: ["marketplace-search", trimmedQuery, isAddress, filters],
     queryFn: async (): Promise<CreateGameResponse[]> => {
-      if (!trimmedQuery) {
+      // If no query and no filters, return empty
+      if (!trimmedQuery && !filters) {
         return [];
       }
 
-      // Strategy 1: Candy Machine Address Search
-      if (isAddress) {
+      // Strategy 1: Candy Machine Address Search (only if query is an address)
+      if (isAddress && trimmedQuery) {
         try {
           // Query blockchain for fresh collection data
           const collectionRepo = new CollectionRepository();
@@ -66,16 +69,16 @@ export function useMarketplaceSearchQuery({
           ];
         } catch (error) {
           // If blockchain query fails, try backend search as fallback
-          const games = await gameApiService.searchGames(trimmedQuery);
+          const games = await gameApiService.searchGames(trimmedQuery, filters);
           return games;
         }
       }
 
       // Strategy 2: Game Name Search
-      const games = await gameApiService.searchGames(trimmedQuery);
+      const games = await gameApiService.searchGames(trimmedQuery, filters);
       return games;
     },
-    enabled: enabled && trimmedQuery.length > 0,
+    enabled: enabled && (trimmedQuery.length > 0 || !!filters),
     staleTime: 1000 * 60 * 2, // 2 minutes - shorter than all games query since search results may change
     gcTime: 1000 * 60 * 5, // 5 minutes cache
     refetchOnMount: true, // Always fetch fresh search results on mount

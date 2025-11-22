@@ -1,4 +1,6 @@
-import type { CreateGameRequest, CreateGameResponse, ApiErrorResponse } from './types';
+import type { CreateGameRequest, CreateGameResponse, ApiErrorResponse, GameFilterParams } from './types';
+
+const LAMPORTS_PER_SOL = 1_000_000_000;
 
 /**
  * Service for interacting with the GameX backend API
@@ -86,11 +88,48 @@ export class GameApiService {
    * @param query - Search query string
    * @returns Array of matching games
    */
-  async searchGames(query: string): Promise<CreateGameResponse[]> {
+  async searchGames(query: string, filters?: GameFilterParams): Promise<CreateGameResponse[]> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/games/search?q=${encodeURIComponent(query)}`
-      );
+      // Build query parameters
+      const params = new URLSearchParams();
+
+      // Add name filter (from query parameter)
+      if (query) {
+        params.append('q', query);
+      }
+
+      // Add additional filters if provided
+      if (filters) {
+        // Add name filter from filters object (can override query param)
+        if (filters.name) {
+          params.set('q', filters.name);
+        }
+
+        // Add category filters
+        if (filters.categories && filters.categories.length > 0) {
+          filters.categories.forEach(category => {
+            params.append('categories', category);
+          });
+        }
+
+        // Convert SOL to lamports for price filters
+        if (filters.minPrice !== undefined) {
+          const minPriceLamports = Math.floor(filters.minPrice * LAMPORTS_PER_SOL);
+          params.append('min_price', minPriceLamports.toString());
+        }
+
+        if (filters.maxPrice !== undefined) {
+          const maxPriceLamports = Math.floor(filters.maxPrice * LAMPORTS_PER_SOL);
+          params.append('max_price', maxPriceLamports.toString());
+        }
+      }
+
+      const queryString = params.toString();
+      const url = queryString
+        ? `${this.baseUrl}/games/search?${queryString}`
+        : `${this.baseUrl}/games/search`;
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`Failed to search games: ${response.status} ${response.statusText}`);

@@ -47,3 +47,13 @@ export interface ApiErrorResponse {
   error: string;
   message?: string;
 }
+
+/**
+ * Filter parameters for searching games
+ */
+export interface GameFilterParams {
+  name?: string;
+  categories?: string[];
+  minPrice?: number; // in SOL
+  maxPrice?: number; // in SOL
+}

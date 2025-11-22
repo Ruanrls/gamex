@@ -11,7 +11,7 @@ import { useLibraryGamesQuery } from "@/hooks/queries/use-library-games-query";
 import { useDownloadGameMutation } from "@/hooks/mutations/use-download-game-mutation";
 import { useUninstallGameMutation } from "@/hooks/mutations/use-uninstall-game-mutation";
 import { detectTargetTriple, getExecutableFilename } from "@/lib/platform";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/library")({
   component: RouteComponent,
@@ -39,6 +40,8 @@ export const Route = createFileRoute("/library")({
   },
 });
 
+type LibraryTab = "all" | "installed" | "uninstalled";
+
 function RouteComponent() {
   const { wallet } = useUser();
   const { data: games = [], isLoading, error, refetch } = useLibraryGamesQuery({
@@ -47,6 +50,20 @@ function RouteComponent() {
   const downloadGameMutation = useDownloadGameMutation();
   const uninstallGameMutation = useUninstallGameMutation();
   const [gameToUninstall, setGameToUninstall] = useState<LibraryGame | null>(null);
+  const [activeTab, setActiveTab] = useState<LibraryTab>("all");
+
+  // Filter games based on active tab
+  const filteredGames = useMemo(() => {
+    switch (activeTab) {
+      case "installed":
+        return games.filter((game) => game.isInstalled);
+      case "uninstalled":
+        return games.filter((game) => !game.isInstalled);
+      case "all":
+      default:
+        return games;
+    }
+  }, [games, activeTab]);
 
   const extractCidFromUrl = (input: string): string => {
     const patterns = [
@@ -208,6 +225,30 @@ function RouteComponent() {
           </p>
         </div>
 
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as LibraryTab)} className="mb-6">
+          <TabsList className="bg-neutral-800 border border-neutral-700">
+            <TabsTrigger
+              value="all"
+              className="data-[state=active]:bg-pink-600 data-[state=active]:text-white"
+            >
+              Todos ({games.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="installed"
+              className="data-[state=active]:bg-pink-600 data-[state=active]:text-white"
+            >
+              Instalados ({games.filter(g => g.isInstalled).length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="uninstalled"
+              className="data-[state=active]:bg-pink-600 data-[state=active]:text-white"
+            >
+              Não Instalados ({games.filter(g => !g.isInstalled).length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
       {isLoading ? (
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="text-center">
@@ -231,9 +272,24 @@ function RouteComponent() {
             </p>
           </div>
         </div>
+      ) : filteredGames.length === 0 ? (
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="text-center">
+            <p className="mb-2 text-xl text-gray-300">
+              {activeTab === "installed"
+                ? "Nenhum jogo instalado"
+                : "Nenhum jogo não instalado"}
+            </p>
+            <p className="text-gray-500">
+              {activeTab === "installed"
+                ? "Faça o download de seus jogos para instalá-los"
+                : "Todos os seus jogos já estão instalados"}
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {games.map((game) => (
+          {filteredGames.map((game) => (
             <GameCard
               key={game.assetPublicKey}
               title={game.metadata.name}
