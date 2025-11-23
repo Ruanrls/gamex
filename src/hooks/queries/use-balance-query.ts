@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import connection from "@/lib/blockchain/connection";
+import { connectionManager } from "@/lib/blockchain/connection";
 import { PublicKey } from "@solana/web3.js";
 
 export type UseBalanceQueryOptions = {
@@ -21,7 +21,7 @@ export function useBalanceQuery({ walletAddress }: UseBalanceQueryOptions) {
 
       console.debug("[useBalanceQuery] Fetching balance for:", walletAddress);
 
-      const balance = await connection.getBalance(new PublicKey(walletAddress));
+      const balance = await connectionManager.getConnection().getBalance(new PublicKey(walletAddress));
 
       console.debug("[useBalanceQuery] Balance fetched:", balance);
 

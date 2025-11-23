@@ -1,4 +1,4 @@
-import connection from "@/lib/blockchain/connection";
+import { connectionManager } from "@/lib/blockchain/connection";
 import { useUser } from "@/providers/user.provider";
 import { PublicKey } from "@solana/web3.js";
 import { useCallback, useEffect, useState } from "react";
@@ -25,7 +25,7 @@ export function useBalance() {
       }
 
       try {
-        const balance = await connection.getBalance(
+        const balance = await connectionManager.getConnection().getBalance(
           new PublicKey(userContext.wallet.address)
         );
         console.debug("[useBalance:getBalance] new user balance: ", balance);
