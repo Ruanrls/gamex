@@ -7,7 +7,12 @@ import { connectionManager } from "./connection";
  * Create a configured Umi instance with all required programs registered
  */
 export function createConfiguredUmi() {
-  const umi = createUmi(connectionManager.rpcEndpoint);
+  const endpoint = connectionManager.rpcEndpoint;
+  console.debug("[createConfiguredUmi] Using RPC endpoint:", endpoint);
+
+  const umi = createUmi(endpoint, {
+    commitment: "confirmed",
+  });
 
   // Register Metaplex programs
   umi.use(mplCore());
