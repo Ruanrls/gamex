@@ -298,17 +298,12 @@ export class IPFSService implements FileStorage {
 
           // Type 4 = Provider record (actual provider found)
           // This is the ONLY reliable indicator that content is available
-          // Verify the provider ID is valid (not empty or undefined)
-          if (record.Type === 4 && record.ID && record.ID.trim().length > 0) {
+          if (record.Type === 4) {
             console.debug(
               `[IPFSService] Found provider for CID ${cid}:`,
-              record.ID
+              record.ID || "(empty ID)"
             );
             return true;
-          } else if (record.Type === 4) {
-            console.warn(
-              `[IPFSService] Found Type 4 record but provider ID is empty/invalid for CID ${cid}`
-            );
           }
         } catch (parseError) {
           console.warn(
