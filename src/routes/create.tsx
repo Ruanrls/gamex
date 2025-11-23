@@ -79,6 +79,15 @@ function RouteComponent() {
       });
 
       const metadataResult = await ipfs.uploadJson(metadata.toJSON());
+
+      // Pin all uploaded files to ensure they remain available from publisher's node
+      const cidsToPin = [
+        imageResult.id,
+        ...executableResults.map((result) => result.id),
+        metadataResult.id,
+      ];
+      await ipfs.pinMultipleFiles(cidsToPin);
+
       const metadataUri = ipfs.getGatewayUrl(metadataResult.id);
 
       // Convert price from SOL to lamports
