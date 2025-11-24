@@ -29,6 +29,7 @@ type SettingsDialogProps = {
 
 const CLUSTER_PRESETS = {
   mainnet: "https://api.mainnet-beta.solana.com",
+  devnet: "https://api.devnet.solana.com",
   custom: "",
 } as const;
 
@@ -144,6 +145,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     className="text-white hover:bg-gray-700"
                   >
                     Mainnet Beta
+                  </SelectItem>
+                  <SelectItem
+                    value="devnet"
+                    className="text-white hover:bg-gray-700"
+                  >
+                    Devnet
                   </SelectItem>
                   <SelectItem
                     value="custom"
