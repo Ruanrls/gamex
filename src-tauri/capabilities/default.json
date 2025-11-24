@@ -55,6 +55,7 @@
         }
       ]
     },
-    "os:default"
+    "os:default",
+    "dialog:default"
   ]
 }

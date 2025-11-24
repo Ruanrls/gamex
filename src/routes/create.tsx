@@ -54,9 +54,10 @@ function RouteComponent() {
       const binaries = values.binaries;
 
       // Upload image and all executables in parallel
+      // Use CLI method for executables (handles large files better)
       const imageUpload = ipfs.uploadFile(imageFile);
       const executableUploads = binaries.map((binary: any) =>
-        ipfs.uploadFile(binary.file)
+        ipfs.uploadFileViaCLI(binary.filePath, binary.fileName, binary.fileSize)
       );
 
       const [imageResult, ...executableResults] = await Promise.all([

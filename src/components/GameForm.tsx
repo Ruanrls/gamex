@@ -1,6 +1,8 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { open } from "@tauri-apps/plugin-dialog";
+import { stat } from "@tauri-apps/plugin-fs";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -44,7 +46,9 @@ const ACCEPTED_IMAGE_TYPES = [
 export type BinaryEntry = {
   id: string;
   targetTriple: TargetTriple | null;
-  file: File | null;
+  filePath: string | null;
+  fileName: string | null;
+  fileSize: number | null;
 };
 
 const gameFormSchema = z.object({
@@ -90,7 +94,7 @@ export function GameForm({ onSubmit }: GameFormProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState<string>("");
   const [binaries, setBinaries] = useState<BinaryEntry[]>([
-    { id: crypto.randomUUID(), targetTriple: null, file: null },
+    { id: crypto.randomUUID(), targetTriple: null, filePath: null, fileName: null, fileSize: null },
   ]);
   const [binaryError, setBinaryError] = useState<string | null>(null);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
@@ -125,7 +129,7 @@ export function GameForm({ onSubmit }: GameFormProps) {
   const addBinary = () => {
     setBinaries([
       ...binaries,
-      { id: crypto.randomUUID(), targetTriple: null, file: null },
+      { id: crypto.randomUUID(), targetTriple: null, filePath: null, fileName: null, fileSize: null },
     ]);
   };
 
@@ -140,9 +144,33 @@ export function GameForm({ onSubmit }: GameFormProps) {
     setBinaryError(null);
   };
 
+  const handleFileSelect = async (binaryId: string) => {
+    try {
+      const selected = await open({
+        multiple: false,
+        title: "Selecione o executável do jogo",
+      });
+
+      if (selected && typeof selected === "string") {
+        // Get file stats to get size and name
+        const fileStats = await stat(selected);
+        const fileName = selected.split(/[/\\]/).pop() || "unknown";
+
+        updateBinary(binaryId, {
+          filePath: selected,
+          fileName: fileName,
+          fileSize: fileStats.size,
+        });
+      }
+    } catch (error) {
+      console.error("Error selecting file:", error);
+      setBinaryError("Falha ao selecionar arquivo");
+    }
+  };
+
   const validateBinaries = (): boolean => {
     // Check at least one binary
-    const validBinaries = binaries.filter((b) => b.targetTriple && b.file);
+    const validBinaries = binaries.filter((b) => b.targetTriple && b.filePath);
     if (validBinaries.length === 0) {
       setBinaryError("Pelo menos um executável é necessário");
       return false;
@@ -158,8 +186,8 @@ export function GameForm({ onSubmit }: GameFormProps) {
 
     // Check file sizes
     for (const binary of validBinaries) {
-      if (binary.file && binary.file.size > MAX_EXECUTABLE_SIZE) {
-        setBinaryError(`${binary.file.name} excede o tamanho máximo de 100MB`);
+      if (binary.fileSize && binary.fileSize > MAX_EXECUTABLE_SIZE) {
+        setBinaryError(`${binary.fileName} excede o tamanho máximo de 100MB`);
         return false;
       }
     }
@@ -180,7 +208,7 @@ export function GameForm({ onSubmit }: GameFormProps) {
       return;
     }
 
-    const validBinaries = binaries.filter((b) => b.targetTriple && b.file);
+    const validBinaries = binaries.filter((b) => b.targetTriple && b.filePath);
     await onSubmit({ ...values, binaries: validBinaries });
   };
 
@@ -438,23 +466,22 @@ export function GameForm({ onSubmit }: GameFormProps) {
                       <label className="text-sm font-medium mb-2 block text-gray-300">
                         Executável
                       </label>
-                      <Input
-                        type="file"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            updateBinary(binary.id, { file });
-                          }
-                        }}
-                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleFileSelect(binary.id)}
+                        className="w-full"
+                      >
+                        {binary.fileName ? "Alterar arquivo" : "Selecionar arquivo"}
+                      </Button>
                     </div>
                   </div>
 
-                  {binary.file && (
+                  {binary.fileName && (
                     <div className="p-2 bg-blue-900/20 border border-blue-700 rounded text-sm">
                       <span className="text-blue-300">
-                        {binary.file.name} (
-                        {(binary.file.size / 1024 / 1024).toFixed(2)} MB)
+                        {binary.fileName} (
+                        {((binary.fileSize || 0) / 1024 / 1024).toFixed(2)} MB)
                       </span>
                     </div>
                   )}

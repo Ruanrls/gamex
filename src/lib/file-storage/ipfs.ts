@@ -13,7 +13,6 @@ export type IPFSUploadResult = {
 export class IPFSService implements FileStorage {
   private static instance: IPFSService;
   private ipfsPath: string | null = null;
-  private offlineMode: boolean = false;
 
   private constructor() {}
 
@@ -44,13 +43,6 @@ export class IPFSService implements FileStorage {
   }
 
   /**
-   * Enable or disable offline mode
-   * @param offline - true to run offline (no network), false for normal mode
-   */
-  setOfflineMode(offline: boolean): void {
-    this.offlineMode = offline;
-  }
-  /**
    * Initialize IPFS repository (run once on first use)
    */
   async init(): Promise<void> {
@@ -78,10 +70,7 @@ export class IPFSService implements FileStorage {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Add offline parameter if needed
-      const url = this.offlineMode
-        ? "http://localhost:5001/api/v0/add?offline=true"
-        : "http://localhost:5001/api/v0/add";
+      const url = "http://localhost:5001/api/v0/add";
 
       const response = await fetch(url, {
         method: "POST",
@@ -103,6 +92,85 @@ export class IPFSService implements FileStorage {
       };
     } catch (error) {
       console.error("Failed to add file to IPFS:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a file to IPFS using CLI (for large files like game executables)
+   * This method streams from disk and doesn't load the entire file into memory
+   * @param filePath - Absolute path to the file on disk
+   * @param fileName - Name of the file (for result metadata)
+   * @param fileSize - Size of the file in bytes (for result metadata)
+   * @param onProgress - Optional progress callback (loaded, total)
+   * @returns CID of the uploaded file
+   */
+  async uploadFileViaCLI(
+    filePath: string,
+    fileName: string,
+    fileSize: number,
+    onProgress?: (loaded: number, total: number) => void
+  ) {
+    try {
+      const fileSizeGB = fileSize / (1024 * 1024 * 1024);
+      console.log(
+        `[IPFSService] Starting CLI upload for ${fileName} (${fileSizeGB.toFixed(
+          2
+        )}GB)`
+      );
+      console.log(`[IPFSService] File path: ${filePath}`);
+
+      // Get environment variables for IPFS
+      const env = await this.getEnv();
+
+      // Run IPFS add command with progress flag
+      // --progress: Show progress updates
+      // --cid-version=1: Use CIDv1 (better for web gateways)
+      // --chunker=size-262144: Use 256KB chunks for better streaming
+      const command = Command.sidecar(
+        "binaries/ipfs",
+        ["add", "--progress", "--cid-version=1", filePath],
+        { env }
+      );
+
+      const output = await command.execute();
+
+      if (output.code !== 0) {
+        throw new Error(
+          `IPFS CLI error (exit code ${output.code}): ${output.stderr}`
+        );
+      }
+
+      console.log("[IPFSService] IPFS add output:", output.stdout);
+
+      // Parse the output to extract CID
+      // IPFS CLI outputs: "added <CID> <filename>"
+      // With --progress, there are progress lines too, but final line has the CID
+      const lines = output.stdout.trim().split("\n");
+      const lastLine = lines[lines.length - 1];
+      const match = lastLine.match(/added\s+(\S+)\s+(.+)/);
+
+      if (!match) {
+        throw new Error(
+          `Failed to parse CID from IPFS output: ${output.stdout}`
+        );
+      }
+
+      const cid = match[1];
+
+      console.log(`[IPFSService] Upload complete. CID: ${cid}`);
+
+      if (onProgress) {
+        onProgress(fileSize, fileSize);
+      }
+
+      return {
+        id: cid,
+        name: fileName,
+        sizeInBytes: fileSize,
+      };
+    } catch (error) {
+      console.error("[IPFSService] CLI upload failed:", error);
       throw error;
     }
   }
