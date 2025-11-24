@@ -73,7 +73,7 @@ function RouteComponent() {
       const metadata = GameMetadataVO.create({
         name: values.name,
         description: values.description,
-        image: ipfs.getGatewayUrl(imageResult.id),
+        image: ipfs.getGatewayUrl(imageResult.id, "https://ipfs.io"),
         categories: values.categories,
         executables,
       });
@@ -88,7 +88,7 @@ function RouteComponent() {
       ];
       await ipfs.pinMultipleFiles(cidsToPin);
 
-      const metadataUri = ipfs.getGatewayUrl(metadataResult.id);
+      const metadataUri = ipfs.getGatewayUrl(metadataResult.id, "https://ipfs.io");
 
       // Convert price from SOL to lamports
       const priceLamports = solToLamports(values.price);
