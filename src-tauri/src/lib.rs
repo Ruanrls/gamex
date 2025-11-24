@@ -2,7 +2,10 @@ use std::collections::HashMap;
 use std::process::Child;
 use std::sync::Mutex;
 use tauri::{async_runtime, AppHandle, Manager, RunEvent};
-use tauri_plugin_shell::{process::CommandChild, ShellExt};
+use tauri_plugin_shell::{
+    process::{CommandChild, CommandEvent},
+    ShellExt,
+};
 
 // Process manager to track all spawned child processes
 struct ProcessManager {
@@ -215,10 +218,17 @@ pub fn run() {
                     .envs(env);
 
                 match sidecar_command.spawn() {
-                    Ok((_rx, child)) => {
+                    Ok((mut rx, child)) => {
                         println!("[Tauri] IPFS daemon spawned successfully!");
                         let process_manager = app_handle.state::<ProcessManager>();
                         process_manager.set_ipfs_process(child);
+
+
+                        while let Some(event) = rx.recv().await {
+                            if let CommandEvent::Stdout(line) = event {
+                                println!("[IPFS]: {}", String::from_utf8(line).unwrap());
+                            }
+                        }
                     },
                     Err(e) => println!("[Tauri] Failed to spawn IPFS daemon: {}", e),
                 }
