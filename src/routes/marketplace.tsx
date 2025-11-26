@@ -7,6 +7,7 @@ import {
 import { useUser } from "@/providers/user.provider";
 import { useState, useMemo } from "react";
 import { MarketplaceGameCard } from "@/components/MarketplaceGameCard";
+import { LatestGameCard } from "@/components/LatestGameCard";
 import { GameDetailsDialog } from "@/components/GameDetailsDialog";
 import { MarketplaceFilters } from "@/components/MarketplaceFilters";
 import { Loader2, Search, X } from "lucide-react";
@@ -91,6 +92,21 @@ function RouteComponent() {
       : allGames;
   }, [debouncedSearchQuery, hasActiveFilters, searchResults, allGames]);
 
+  // Get the 3 latest games for the featured section
+  const latestGames = useMemo(() => {
+    // Don't show latest games when searching or filtering
+    if (debouncedSearchQuery.length > 0 || hasActiveFilters) {
+      return [];
+    }
+    // Sort by created_at in descending order and take first 3
+    return [...allGames]
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .slice(0, 3);
+  }, [allGames, debouncedSearchQuery, hasActiveFilters]);
+
   const isLoading =
     debouncedSearchQuery.length > 0 || hasActiveFilters
       ? isSearching
@@ -138,7 +154,10 @@ function RouteComponent() {
   const getDownloadErrorMessage = (error: Error): string => {
     const errorMessage = error.message.toLowerCase();
 
-    if (errorMessage.includes("content not available") || errorMessage.includes("no peers found")) {
+    if (
+      errorMessage.includes("content not available") ||
+      errorMessage.includes("no peers found")
+    ) {
       return "Jogo indisponível na rede IPFS. Nenhum peer encontrado hospedando este jogo. O conteúdo pode ter sido removido ou está temporariamente indisponível.";
     }
 
@@ -223,6 +242,49 @@ function RouteComponent() {
 
         {/* Main Content Area */}
         <div className="flex-1">
+          {/* Latest Games Section */}
+          {latestGames.length > 0 && (
+            <div className="mb-8">
+              <h2 className="mb-4 text-2xl font-bold text-white">
+                Lançamentos Recentes
+              </h2>
+              <div className="mb-8 grid grid-cols-1 gap-3 md:grid-cols-5 md:grid-rows-2 w-full mx-auto md:h-142">
+                {/* Large featured game - 3 columns × 2 rows */}
+                {latestGames[0] && (
+                  <div className="md:col-span-3 md:row-span-2">
+                    <LatestGameCard
+                      game={latestGames[0]}
+                      onCardClick={handleCardClick}
+                      size="large"
+                    />
+                  </div>
+                )}
+
+                {/* Second game - 2 columns × 1 row */}
+                {latestGames[1] && (
+                  <div className="md:col-span-2 md:row-span-1">
+                    <LatestGameCard
+                      game={latestGames[1]}
+                      onCardClick={handleCardClick}
+                      size="small"
+                    />
+                  </div>
+                )}
+
+                {/* Third game - 2 columns × 1 row */}
+                {latestGames[2] && (
+                  <div className="md:col-span-2 md:row-span-1">
+                    <LatestGameCard
+                      game={latestGames[2]}
+                      onCardClick={handleCardClick}
+                      size="small"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Search Input */}
           <div className="mb-6">
             <div className="relative">
