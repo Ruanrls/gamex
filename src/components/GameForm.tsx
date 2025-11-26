@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 const MAX_IMAGE_SIZE = 5000000; // 5MB
-const MAX_EXECUTABLE_SIZE = 100000000; // 100MB
+const MAX_EXECUTABLE_SIZE = 8 * 1024 * 1024 * 1024; // 8GB
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -94,7 +94,13 @@ export function GameForm({ onSubmit }: GameFormProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [priceInput, setPriceInput] = useState<string>("");
   const [binaries, setBinaries] = useState<BinaryEntry[]>([
-    { id: crypto.randomUUID(), targetTriple: null, filePath: null, fileName: null, fileSize: null },
+    {
+      id: crypto.randomUUID(),
+      targetTriple: null,
+      filePath: null,
+      fileName: null,
+      fileSize: null,
+    },
   ]);
   const [binaryError, setBinaryError] = useState<string | null>(null);
   const [isEditingPrice, setIsEditingPrice] = useState(false);
@@ -129,7 +135,13 @@ export function GameForm({ onSubmit }: GameFormProps) {
   const addBinary = () => {
     setBinaries([
       ...binaries,
-      { id: crypto.randomUUID(), targetTriple: null, filePath: null, fileName: null, fileSize: null },
+      {
+        id: crypto.randomUUID(),
+        targetTriple: null,
+        filePath: null,
+        fileName: null,
+        fileSize: null,
+      },
     ]);
   };
 
@@ -472,7 +484,9 @@ export function GameForm({ onSubmit }: GameFormProps) {
                         onClick={() => handleFileSelect(binary.id)}
                         className="w-full"
                       >
-                        {binary.fileName ? "Alterar arquivo" : "Selecionar arquivo"}
+                        {binary.fileName
+                          ? "Alterar arquivo"
+                          : "Selecionar arquivo"}
                       </Button>
                     </div>
                   </div>

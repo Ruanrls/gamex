@@ -29,6 +29,16 @@
     "fs:allow-read-file",
     "fs:allow-write-file",
     {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/ipfs",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    {
       "identifier": "shell:allow-spawn",
       "allow": [
         {
