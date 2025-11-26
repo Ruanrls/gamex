@@ -225,7 +225,14 @@ function RouteComponent() {
 
   return (
     <div className="container mx-auto px-4 py-10">
-      <div className="mb-8">
+      <div className="w-full mt-20">
+        <h1 className="text-2xl font-bold font-mono max-w-3xl mx-auto text-center">
+          Seja realmente o dono dos seus jogos. Compre, venda e jogue títulos
+          sem ter medo de perder seu acesso.
+        </h1>
+      </div>
+
+      <div className="mb-8 mt-12">
         <h1 className="mb-2 text-3xl font-bold text-white">Marketplace</h1>
         <p className="text-gray-400">Encontre e compre jogos na blockchain</p>
       </div>

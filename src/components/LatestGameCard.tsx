@@ -39,16 +39,10 @@ export function LatestGameCard({
   return (
     <div
       onClick={() => onCardClick(game)}
-      className={`group relative overflow-hidden rounded-2xl bg-neutral-800 transition-shadow hover:shadow-xl cursor-pointer ${
-        isLarge ? "h-full" : ""
-      }`}
+      className={`group relative overflow-hidden rounded-2xl bg-neutral-800 transition-shadow hover:shadow-xl cursor-pointer h-full`}
     >
       {/* Game Image */}
-      <div
-        className={`w-full overflow-hidden bg-neutral-700 ${
-          isLarge ? "h-full" : "aspect-[16/9]"
-        }`}
-      >
+      <div className={`w-full bg-neutral-700 h-full`}>
         <img
           src={getLocalImageUrl(game.image_url)}
           alt={game.name}
